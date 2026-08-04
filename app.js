@@ -1,10 +1,11 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceImage, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260804d";
-import {eventFor} from "./simulation.js?v=20260804d";
-import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260804d";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceImage, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260804e";
+import {eventFor} from "./simulation.js?v=20260804e";
+import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260804e";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
 const guidePending=new Set();
+const htmlSafe=(value="")=>String(value).replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));
 const PAGE_GUIDES={
   observe:["관찰","캐릭터가 지금 어디에서 무엇을 하는지 볼 수 있어요. 위쪽에서 캐릭터와 마을을 바꾸고, 아래 생활로그에서 오늘의 흐름을 확인해 보세요."],
   home:["집","방마다 누가 무엇을 하는지 보고, 집 편집에서 방 사진·동거인·함께 사는 존재·자동차를 설정할 수 있어요."],
@@ -163,9 +164,6 @@ function enhanceDynamicForms(){
     const usage=window.ParallelCityAuth?.getInfo?.().storageUsage||JSON.parse(localStorage.getItem("drawer-village-storage-usage")||'{"count":0,"bytes":0,"maxCount":120,"maxBytes":20971520}');
     const percent=Math.min(100,Math.round((usage.bytes||0)/(usage.maxBytes||20971520)*100)),used=((usage.bytes||0)/1048576).toFixed(1),limit=((usage.maxBytes||20971520)/1048576).toFixed(0),left=`${Math.max(0,((usage.maxBytes||20971520)-(usage.bytes||0))/1048576).toFixed(1)}MB 남음`;
     const meter=document.createElement("div");meter.className="storage-meter";meter.innerHTML=`<h3>사진 저장 공간</h3><div><i style="width:${percent}%"></i></div><b>${used}MB 사용 · ${left}</b><small>현재 총 ${limit}MB · 캐릭터 ${characterLimit()}명 · 마을 ${townLimit()}개 · 이미지 링크는 이 용량을 사용하지 않아요.</small>`;sync.append(meter);
-  }
-  if(state.activeTab==="observe"&&!document.querySelector("[data-show-outfit]")&&document.querySelector(".detail")){
-    const button=document.createElement("button");button.type="button";button.className="show-outfit-button";button.dataset.showOutfit=state.activeId;button.textContent="오늘의 캐릭터 패션";document.querySelector(".detail h2")?.insertAdjacentElement("afterend",button);
   }
 }
 const addRoutine=characterId=>{
@@ -407,7 +405,6 @@ function bind(){
     const item=state.catalog.fashion.find(value=>value.id===button.dataset.item);if(!item)return;const field=button.dataset.fashionAttr,value=button.dataset.value,list=Array.isArray(item[field])?[...item[field]]:[];
     updateCatalogItem("fashion",item.id,{[field]:list.includes(value)?list.filter(entry=>entry!==value):[...list,value]});render();
   });
-  $$('[data-show-outfit]').forEach(button=>button.onclick=()=>openOutfitDialog(button.dataset.showOutfit));
   $$("[data-image]").forEach(el=>el.onclick=()=>pickImage(el.dataset.image,active().id));
   $$("[data-room-bg]").forEach(el=>el.onclick=()=>pickImage("room",el.dataset.homeId,el.dataset.room));
   $$("[data-home-bg]").forEach(el=>el.onclick=()=>pickImage("home",el.dataset.homeBg));
@@ -801,6 +798,7 @@ function openRelationDialog(id=""){
     <label>관계 종류<select name="type">${RELATION_TYPES.map(type=>`<option>${type}</option>`).join("")}</select></label>
     <label>현재 관계 단계<select name="stage"></select></label>
     <label class="cohabit"><input type="checkbox" name="cohabit"> 함께 살기</label>
+    <section class="relation-thought-editor"><h3>각 캐릭터가 이 관계를 어떻게 생각하나요?</h3><p>같은 관계라도 서로 다르게 느낄 수 있어요. 비워 둔 캐릭터의 생각은 정하지 않은 것으로 처리해요.</p><div>${state.order.map(cid=>`<label>${htmlSafe(state.characters[cid].name)}<textarea data-relation-thought="${cid}" rows="2" placeholder="예: 믿고 의지하지만 가끔 지나치게 간섭한다고 생각함">${htmlSafe(old?.perspectives?.[cid]||"")}</textarea></label>`).join("")}</div></section>
     <section class="relation-interaction-picker"><div class="relation-interaction-title"><h3>이 관계에서 자주 일어나는 행동</h3><button type="button" data-interaction-all>모두 선택</button><button type="button" data-interaction-clear>모두 해제</button></div>${Object.entries(RELATION_INTERACTION_GROUPS).map(([group,values])=>`<details open><summary><b>${group}</b><span><button type="button" data-group-all="${group}">전체 선택</button><button type="button" data-group-clear="${group}">해제</button></span></summary><div>${values.map(value=>`<button type="button" data-relation-interaction="${value}" data-interaction-group="${group}" class="${(old?.interactions||[]).includes(value)?"on":""}">${value}</button>`).join("")}</div></details>`).join("")}</section>
     <p class="hint">선택한 행동과 관계 단계가 생활 로그와 상호작용 대사에 반영돼요. 여러 명을 함께 선택해도 모두 같은 관계 종류로 저장돼요.</p>
     <div><button value="cancel">취소</button><button class="primary" value="save">저장</button></div>
@@ -841,7 +839,8 @@ function openRelationDialog(id=""){
       else if(!["짝사랑","부모·자녀"].includes(f.type.value)&&members.length<2)alert("관계에 포함할 캐릭터를 두 명 이상 골라 주세요.");
       else{
         const levels=stagesFor(f.type.value),index=Math.max(0,levels.indexOf(f.stage.value)),ratio=levels.length<=1?1:index/(levels.length-1);
-        const hostile=f.type.value==="혐관",base={type:f.type.value,stage:f.stage.value,interactions:[...selectedInteractions],interactionsAll:selectedInteractions.size===allInteractionValues.length,cohabit:f.cohabit.checked,intimacy:hostile?Math.round(35+ratio*30):Math.round(ratio*100),conflict:hostile?Math.round(100-ratio*55):Math.round((1-ratio)*75),updatedAt:Date.now()};
+        const perspectives=Object.fromEntries([...f.querySelectorAll("[data-relation-thought]")].map(input=>[input.dataset.relationThought,input.value.trim()]).filter(([,text])=>text));
+        const hostile=f.type.value==="혐관",base={type:f.type.value,stage:f.stage.value,perspectives,interactions:[...selectedInteractions],interactionsAll:selectedInteractions.size===allInteractionValues.length,cohabit:f.cohabit.checked,intimacy:hostile?Math.round(35+ratio*30):Math.round(ratio*100),conflict:hostile?Math.round(100-ratio*55):Math.round((1-ratio)*75),updatedAt:Date.now()};
         if(old?.groupId)Object.values(state.relationships).filter(r=>r.groupId===old.groupId).forEach(r=>deleteRelationship(r.id));
         else if(old&&(["짝사랑","부모·자녀"].includes(f.type.value)||members.length!==2))deleteRelationship(id);
         if(f.type.value==="짝사랑"){
@@ -922,12 +921,12 @@ if(localStorage.getItem("drawer-village-hide-photo-backup-notice")!=="1"&&localS
   notice.onclose=()=>{if(notice.querySelector('[name="hide"]')?.checked)localStorage.setItem("drawer-village-hide-photo-backup-notice","1");notice.remove()};
   document.body.append(notice);notice.showModal();
 }
-import("./auth.js?v=20260804d").catch(error=>{
+import("./auth.js?v=20260804e").catch(error=>{
   console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
   setAccountLabel("Google 로그인");
 });
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260804d").catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260804e").catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();

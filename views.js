@@ -1,5 +1,5 @@
-import {state,active} from "./state.js?v=20260804d";
-import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260804d";
+import {state,active} from "./state.js?v=20260804e";
+import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260804e";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const JOBS=["무직","학생","회사원","의사","간호사","교사","교수","정치인","기자","요리사","프로그래머","연구원","예술가","해적","군인","환경미화원","여관주인","자영업·직접 입력"];
@@ -303,7 +303,7 @@ function homeCard(id,chars){
   const roomHtml=roomKeys.map(key=>{
     const room=h.rooms?.[key]||{},roomPeople=inside.filter(c=>eventFor(c).room===key);
     const roomPets=pets.filter(p=>petScenes[p.id]?.roomKey===key);
-    const capacity={living:3,kitchen:1,entry:1,bath:1,bedroom:2,study:2}[key]||2;
+    const capacity=2;
     const shownPeople=roomPeople.slice(0,capacity),hiddenPeople=Math.max(0,roomPeople.length-shownPeople.length);
     const petCapacity=Math.max(0,capacity-shownPeople.length),shownPets=roomPets.slice(0,petCapacity),hiddenPets=Math.max(0,roomPets.length-shownPets.length);
     const furniture=FURNITURE[key]||[];
@@ -391,6 +391,31 @@ function catalog(){
   return `<section class="panel form catalog-shell"><div class="title"><div><h1>세계관 취향 도감</h1><p>아이콘을 누르면 세부 정보와 편집 항목이 열려요.</p></div><button class="primary" data-catalog-save>도감 저장</button></div>${sections}</section>`;
 }
 const relationActivities=r=>r.interactions?.length?`<details class="relation-activity-details"><summary>주로 하는 활동 · ${r.interactions.length}개</summary><div class="relation-tags">${r.interactions.map(x=>`<span>${esc(x)}</span>`).join("")}</div></details>`:"";
+const relationPerspectives=r=>{
+  const items=Object.entries(r.perspectives||{}).map(([id,text])=>[state.characters[id],String(text||"").trim()]).filter(([character,text])=>character&&text);
+  return items.length?`<details class="relation-perspective-details"><summary>각자가 이 관계를 보는 방식 · ${items.length}명</summary><div>${items.map(([character,text])=>`<p>${avatar(character)}<span><b>${esc(character.name)}</b><small>${esc(text)}</small></span></p>`).join("")}</div></details>`:"";
+};
+function relationshipMap(relations){
+  const characters=state.order.map(id=>state.characters[id]).filter(Boolean);
+  if(characters.length<2||!relations.length)return"";
+  const positions=new Map(characters.map((character,index)=>{
+    const angle=(Math.PI*2*index/characters.length)-Math.PI/2;
+    return [character.id,{x:50+39*Math.cos(angle),y:50+36*Math.sin(angle)}];
+  }));
+  const colors={연인:"#d85078",부부:"#c33f68",친구:"#4f86c6",가족:"#77994a","부모·자녀":"#9b6e45",짝사랑:"#b06ab3",혐관:"#b04a3f"};
+  const seen=new Set(),edges=relations.filter(relation=>{
+    const key=[relation.a,relation.b].sort().join(":");
+    if(!positions.has(relation.a)||!positions.has(relation.b)||seen.has(key))return false;
+    seen.add(key);return true;
+  });
+  const lines=edges.map(relation=>{
+    const a=positions.get(relation.a),b=positions.get(relation.b),color=colors[relation.type]||"#6d776f";
+    return `<g><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${color}" stroke-width="1.2" stroke-dasharray="${relation.type==="짝사랑"?"3 2":"0"}"/><text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-1.5}" text-anchor="middle">${esc(relation.type)}</text><text class="map-stage" x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2+2}" text-anchor="middle">${esc(relation.stage||"")}</text></g>`;
+  }).join("");
+  const nodes=characters.map(character=>{const pos=positions.get(character.id);return `<div class="relationship-map-node" style="left:${pos.x}%;top:${pos.y}%">${avatar(character)}<b>${esc(character.name)}</b></div>`}).join("");
+  const mobileEdges=edges.map(relation=>`<p><b>${esc(state.characters[relation.a]?.name||"")} ${relation.type==="짝사랑"?"→":"×"} ${esc(state.characters[relation.b]?.name||"")}</b><small>${esc(relation.type)} · ${esc(relation.stage||"")}</small></p>`).join("");
+  return `<section class="relationship-map"><div class="title"><div><h2>인물 관계도</h2><small>선과 단계로 현재 관계를 한눈에 볼 수 있어요.</small></div></div><div class="relationship-map-canvas"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>${nodes}</div><div class="relationship-map-mobile">${mobileEdges}</div></section>`;
+}
 function relationship(){
   const all=Object.values(state.relationships),shownGroups=new Set();
   const cards=all.map(r=>{
@@ -398,14 +423,14 @@ function relationship(){
       if(shownGroups.has(r.groupId))return"";shownGroups.add(r.groupId);
       const group=all.filter(x=>x.groupId===r.groupId),members=[...new Set(group.flatMap(x=>[x.a,x.b]))].map(id=>state.characters[id]).filter(Boolean);
       const direction=r.type==="짝사랑"?`${[...new Set(group.map(x=>state.characters[x.admirerId||x.a]?.name).filter(Boolean))].map(esc).join(" · ")} → ${[...new Set(group.map(x=>state.characters[x.targetId||x.b]?.name).filter(Boolean))].map(esc).join(" · ")}`:r.type==="부모·자녀"?`${[...new Set(group.map(x=>`${state.characters[x.parentId||x.a]?.name||"부모"}(${x.parentRole||"부모"})`))].map(esc).join(" · ")} → ${[...new Set(group.map(x=>state.characters[x.childId||x.b]?.name).filter(Boolean))].map(esc).join(" · ")}`:members.map(member=>esc(member.name)).join(" · ");
-      return `<article class="relation group-relation"><div class="relation-avatars">${members.map(member=>avatar(member)).join("")}</div><h2>${direction}</h2><p>${esc(r.type)} · ${members.length}명이 함께 맺은 관계</p><p class="relation-stage">${esc(r.stage||"편안한 사이")}</p>${relationActivities(r)}<button data-edit-rel="${r.id}">구성원·관계 편집</button><button class="danger" data-delete-group="${r.groupId}">그룹 관계 삭제</button></article>`;
+      return `<article class="relation group-relation"><div class="relation-avatars">${members.map(member=>avatar(member)).join("")}</div><h2>${direction}</h2><p>${esc(r.type)} · ${members.length}명이 함께 맺은 관계</p><p class="relation-stage">${esc(r.stage||"편안한 사이")}</p>${relationPerspectives(r)}${relationActivities(r)}<button data-edit-rel="${r.id}">구성원·관계 편집</button><button class="danger" data-delete-group="${r.groupId}">그룹 관계 삭제</button></article>`;
     }
     const orderedIds=!r.directional&&Array.isArray(r.displayOrder)&&r.displayOrder.length===2?r.displayOrder:[r.a,r.b];
     const a=state.characters[orderedIds[0]],b=state.characters[orderedIds[1]];
     const heading=r.type==="부모·자녀"?`${esc(state.characters[r.parentId||r.a]?.name||a?.name||"부모")}(${esc(r.parentRole||"부모")}) → ${esc(state.characters[r.childId||r.b]?.name||b?.name||"자녀")}`:`${esc(a?.name||"")} ${r.type==="짝사랑"?"→":"×"} ${esc(b?.name||"")}`;
-    return a&&b?`<article class="relation"><div class="relation-avatars">${avatar(a)}${avatar(b)}</div><h2>${heading}</h2><p>${esc(r.type)} · ${r.cohabit?"함께 거주":"따로 거주"}</p><p class="relation-stage">${esc(r.stage||"편안한 사이")}</p>${relationActivities(r)}<button data-edit-rel="${r.id}">편집</button><button class="danger" data-delete-rel="${r.id}">삭제</button></article>`:"";
+    return a&&b?`<article class="relation"><div class="relation-avatars">${avatar(a)}${avatar(b)}</div><h2>${heading}</h2><p>${esc(r.type)} · ${r.cohabit?"함께 거주":"따로 거주"}</p><p class="relation-stage">${esc(r.stage||"편안한 사이")}</p>${relationPerspectives(r)}${relationActivities(r)}<button data-edit-rel="${r.id}">편집</button><button class="danger" data-delete-rel="${r.id}">삭제</button></article>`:"";
   }).join("");
-  return `<section class="panel form"><div class="title"><h1>관계</h1><button data-add-rel>+ 관계 추가</button></div><p>두 사람은 물론 여러 사람을 연인, 친구 모임, 산악회처럼 한 관계로 묶을 수 있어요. 선택한 관계 단계와 행동은 생활 장면에 반영돼요.</p>${cards||'<div class="empty-mini"><b>아직 설정한 관계가 없어요.</b><p>관계를 추가하면 생활과 상호작용에 반영돼요.</p></div>'}</section>`;
+  return `<section class="panel form"><div class="title"><h1>관계</h1><button data-add-rel>+ 관계 추가</button></div><p>두 사람은 물론 여러 사람을 연인, 친구 모임, 산악회처럼 한 관계로 묶을 수 있어요. 선택한 관계 단계와 행동은 생활 장면에 반영돼요.</p>${relationshipMap(all)}<div class="relationship-card-grid">${cards||'<div class="empty-mini"><b>아직 설정한 관계가 없어요.</b><p>관계를 추가하면 생활과 상호작용에 반영돼요.</p></div>'}</div></section>`;
 }
 function routine(){
   const c=active(),days=["일","월","화","수","목","금","토"],items=(state.routines[c.id]||[]).slice().sort((a,b)=>a.day-b.day||a.start.localeCompare(b.start));
