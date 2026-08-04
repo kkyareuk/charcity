@@ -1,11 +1,10 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceImage, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260804e";
-import {eventFor} from "./simulation.js?v=20260804e";
-import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260804e";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceImage, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260804f";
+import {eventFor} from "./simulation.js?v=20260804f";
+import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260804f";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
 const guidePending=new Set();
-const htmlSafe=(value="")=>String(value).replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));
 const PAGE_GUIDES={
   observe:["관찰","캐릭터가 지금 어디에서 무엇을 하는지 볼 수 있어요. 위쪽에서 캐릭터와 마을을 바꾸고, 아래 생활로그에서 오늘의 흐름을 확인해 보세요."],
   home:["집","방마다 누가 무엇을 하는지 보고, 집 편집에서 방 사진·동거인·함께 사는 존재·자동차를 설정할 수 있어요."],
@@ -487,6 +486,18 @@ function bind(){
   $$(".place-editor [data-delete-place]").forEach(button=>button.remove());
   $("[data-add-rel]")?.addEventListener("click",()=>openRelationDialog());
   $$("[data-edit-rel]").forEach(el=>el.onclick=()=>openRelationDialog(el.dataset.editRel));
+  $("[data-view-source]")?.addEventListener("change",event=>{
+    $$("[data-view-panel]").forEach(panel=>panel.hidden=panel.dataset.viewPanel!==event.target.value);
+  });
+  $$("[data-character-view]").forEach(select=>select.onchange=()=>{
+    const source=select.dataset.source,target=select.dataset.target,field=select.dataset.viewField;
+    state.characterViews=state.characterViews&&typeof state.characterViews==="object"?state.characterViews:{};
+    state.characterViews[source]=state.characterViews[source]&&typeof state.characterViews[source]==="object"?state.characterViews[source]:{};
+    state.characterViews[source][target]=state.characterViews[source][target]&&typeof state.characterViews[source][target]==="object"?state.characterViews[source][target]:{};
+    if(select.value==="정하지 않음")delete state.characterViews[source][target][field];
+    else state.characterViews[source][target][field]=select.value;
+    save(true);showToast(`${state.characters[source]?.name||"캐릭터"}의 생각을 저장했어요`);
+  });
   $$("[data-delete-rel]").forEach(el=>el.onclick=()=>{
     if(confirm("이 관계를 삭제할까요?")){deleteRelationship(el.dataset.deleteRel);render();explicitSave("관계 삭제")}
   });
@@ -790,7 +801,7 @@ function openRelationDialog(id=""){
   const old=id?state.relationships[id]:null,dialog=document.createElement("dialog");dialog.className="relation-dialog relation-editor-dialog";
   const oldMembers=old?.groupMembers?.length?old.groupMembers:[old?.a,old?.b].filter(Boolean);
   const characterChecks=(name,selected=[])=>state.order.map(cid=>`<label class="relation-character-chip"><input type="checkbox" name="${name}" value="${cid}" ${selected.includes(cid)?"checked":""}> ${state.characters[cid].name}</label>`).join("");
-  dialog.innerHTML=`<form method="dialog"><div class="title"><div><h2>${old?"관계 편집":"관계 추가"}</h2><small>숫자 대신 관계의 현재 단계를 골라 주세요.</small></div><button value="cancel">×</button></div>
+  dialog.innerHTML=`<form method="dialog"><div class="title"><div><h2>${old?"관계 편집":"관계 추가"}</h2></div><button value="cancel">×</button></div>
     <fieldset class="relation-member-picker"><legend>관계에 포함할 캐릭터 · 두 명 이상</legend><div>${characterChecks("member",oldMembers.length?oldMembers:[state.activeId,state.order.find(cid=>cid!==state.activeId)].filter(Boolean))}</div><small>여기서 바로 캐릭터를 더하거나 뺄 수 있어요. 여러 명의 연인·부부 관계도 가능해요.</small></fieldset>
     <section class="relation-order-control"><b>두 명 관계 카드의 표시 순서</b><span data-relation-order-label></span><button type="button" data-swap-relation-order>↔ 좌우 바꾸기</button><small>예: 리바이 × 안테와 안테 × 리바이 중 원하는 배치를 선택해요.</small></section>
     <fieldset class="crush-direction" hidden><legend>짝사랑의 방향</legend><div class="crush-columns"><section><b>마음을 가진 사람 · 여러 명 가능</b><div>${characterChecks("admirer",old?.admirerId?[old.admirerId]:[])}</div></section><span>→</span><section><b>짝사랑 대상 · 여러 명 가능</b><div>${characterChecks("target",old?.targetId?[old.targetId]:[])}</div></section></div></fieldset>
@@ -798,7 +809,6 @@ function openRelationDialog(id=""){
     <label>관계 종류<select name="type">${RELATION_TYPES.map(type=>`<option>${type}</option>`).join("")}</select></label>
     <label>현재 관계 단계<select name="stage"></select></label>
     <label class="cohabit"><input type="checkbox" name="cohabit"> 함께 살기</label>
-    <section class="relation-thought-editor"><h3>각 캐릭터가 이 관계를 어떻게 생각하나요?</h3><p>같은 관계라도 서로 다르게 느낄 수 있어요. 비워 둔 캐릭터의 생각은 정하지 않은 것으로 처리해요.</p><div>${state.order.map(cid=>`<label>${htmlSafe(state.characters[cid].name)}<textarea data-relation-thought="${cid}" rows="2" placeholder="예: 믿고 의지하지만 가끔 지나치게 간섭한다고 생각함">${htmlSafe(old?.perspectives?.[cid]||"")}</textarea></label>`).join("")}</div></section>
     <section class="relation-interaction-picker"><div class="relation-interaction-title"><h3>이 관계에서 자주 일어나는 행동</h3><button type="button" data-interaction-all>모두 선택</button><button type="button" data-interaction-clear>모두 해제</button></div>${Object.entries(RELATION_INTERACTION_GROUPS).map(([group,values])=>`<details open><summary><b>${group}</b><span><button type="button" data-group-all="${group}">전체 선택</button><button type="button" data-group-clear="${group}">해제</button></span></summary><div>${values.map(value=>`<button type="button" data-relation-interaction="${value}" data-interaction-group="${group}" class="${(old?.interactions||[]).includes(value)?"on":""}">${value}</button>`).join("")}</div></details>`).join("")}</section>
     <p class="hint">선택한 행동과 관계 단계가 생활 로그와 상호작용 대사에 반영돼요. 여러 명을 함께 선택해도 모두 같은 관계 종류로 저장돼요.</p>
     <div><button value="cancel">취소</button><button class="primary" value="save">저장</button></div>
@@ -839,8 +849,7 @@ function openRelationDialog(id=""){
       else if(!["짝사랑","부모·자녀"].includes(f.type.value)&&members.length<2)alert("관계에 포함할 캐릭터를 두 명 이상 골라 주세요.");
       else{
         const levels=stagesFor(f.type.value),index=Math.max(0,levels.indexOf(f.stage.value)),ratio=levels.length<=1?1:index/(levels.length-1);
-        const perspectives=Object.fromEntries([...f.querySelectorAll("[data-relation-thought]")].map(input=>[input.dataset.relationThought,input.value.trim()]).filter(([,text])=>text));
-        const hostile=f.type.value==="혐관",base={type:f.type.value,stage:f.stage.value,perspectives,interactions:[...selectedInteractions],interactionsAll:selectedInteractions.size===allInteractionValues.length,cohabit:f.cohabit.checked,intimacy:hostile?Math.round(35+ratio*30):Math.round(ratio*100),conflict:hostile?Math.round(100-ratio*55):Math.round((1-ratio)*75),updatedAt:Date.now()};
+        const hostile=f.type.value==="혐관",base={type:f.type.value,stage:f.stage.value,interactions:[...selectedInteractions],interactionsAll:selectedInteractions.size===allInteractionValues.length,cohabit:f.cohabit.checked,intimacy:hostile?Math.round(35+ratio*30):Math.round(ratio*100),conflict:hostile?Math.round(100-ratio*55):Math.round((1-ratio)*75),updatedAt:Date.now()};
         if(old?.groupId)Object.values(state.relationships).filter(r=>r.groupId===old.groupId).forEach(r=>deleteRelationship(r.id));
         else if(old&&(["짝사랑","부모·자녀"].includes(f.type.value)||members.length!==2))deleteRelationship(id);
         if(f.type.value==="짝사랑"){
@@ -921,12 +930,12 @@ if(localStorage.getItem("drawer-village-hide-photo-backup-notice")!=="1"&&localS
   notice.onclose=()=>{if(notice.querySelector('[name="hide"]')?.checked)localStorage.setItem("drawer-village-hide-photo-backup-notice","1");notice.remove()};
   document.body.append(notice);notice.showModal();
 }
-import("./auth.js?v=20260804e").catch(error=>{
+import("./auth.js?v=20260804f").catch(error=>{
   console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
   setAccountLabel("Google 로그인");
 });
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260804e").catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260804f").catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();

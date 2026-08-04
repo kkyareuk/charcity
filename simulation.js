@@ -1,4 +1,4 @@
-import {state,save} from "./state.js?v=20260804e";
+import {state,save} from "./state.js?v=20260804f";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -439,15 +439,16 @@ function relationSpecificEntry(c,other,r,time,date,role){
 
 function relationshipHomeEntry(c,pick,time,date){
   const {r,other}=pick,pair=[c.id,other.id].sort(),role=r.type==="짝사랑"&&r.directional?(c.id===r.admirerId?0:1):pair.indexOf(c.id);
-  const thought=String(r.perspectives?.[c.id]||"");
+  const directedView=state.characterViews?.[c.id]?.[other.id]||{};
+  const thought=[directedView.overall,directedView.trust,directedView.comfort,directedView.annoyance,directedView.attention].filter(Boolean).join(" ");
   const interferenceBoost={방관자:-22,"요청할 때만 도움":-5,"적당히 관여":0,"챙기고 확인함":8,"강하게 간섭함":20,컨트롤프릭:34}[c.interference]||0;
   const conflict=Math.max(0,+(r.conflict||0)+interferenceBoost),intimacy=+(r.intimacy||0);
   let scripts;
-  if(/귀찮|성가|부담|피곤/.test(thought))scripts=[
+  if(/가끔 성가|종종 귀찮|많이 귀찮|보기만 해도 피곤|부담/.test(thought))scripts=[
     [`${other.name}의 장난을 흘려듣는 중`,"몇 번째 부름에는 대답 대신 짧게 한숨을 쉬었지만, 정말 필요한 말인지 확인하려고 하던 손을 잠시 멈췄어요.","living"],
     [`${other.name}에게 잠깐 혼자 있고 싶다고 말하는 중`,"싫어서 피하는 것은 아니라고 선을 그은 뒤, 지금 하던 일을 마칠 때까지만 조용히 두어 달라고 부탁했어요.","study"]
   ];
-  else if(/믿|의지|든든|신뢰/.test(thought))scripts=[
+  else if(/어느 정도 믿음|깊이 신뢰|전적으로 의지|든든/.test(thought))scripts=[
     [`${other.name}에게 먼저 의견을 묻는 중`,"혼자 정해도 될 일이지만 이 사람의 판단이라면 믿을 만하다고 생각해 선택지를 하나씩 보여 주고 있어요.","living"],
     [`${other.name}의 곁에서 마음을 놓는 중`,"길게 설명하지 않아도 상황을 알아줄 거라는 믿음에 오늘 있었던 일을 천천히 꺼내고 있어요.","living"]
   ];
@@ -717,7 +718,7 @@ function build(c,date=new Date()){
   return list.map(item=>medievalize(c,item,date)).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260804e";
+const ENGINE_VERSION="20260804f";
 function signature(c){return JSON.stringify({engine:ENGINE_VERSION,createdAt:c.createdAt,townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,wake:c.wake,sleep:c.sleep,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
 
 function mergeImmutableEntries(kept,generated){
