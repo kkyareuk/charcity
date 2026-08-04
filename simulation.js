@@ -1,4 +1,4 @@
-import {state,save,characterViewFor} from "./state.js?v=20260805j";
+import {state,save,characterViewFor} from "./state.js?v=20260805k";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -162,7 +162,10 @@ function catalogChoice(c,place,kind,seed){
 }
 
 function entry(time,title,desc,extra={}){return {time:clock(time),minute:time,title,desc,...extra}}
-function homeEntry(c,time,title="거실에서 쉬는 중",desc="거실 소파에 앉아 조용히 쉬고 있어요.",room="living"){return entry(time,title,desc,{home:true,room})}
+function homeEntry(c,time,title="거실에서 쉬는 중",desc="거실 소파에 앉아 조용히 쉬고 있어요.",room="living"){
+  const resolvedRoom=room==="bedroom"?(c.sleepRoomId||"bedroom"):room;
+  return entry(time,title,desc,{home:true,room:resolvedRoom});
+}
 const away=(c,extra={},date=new Date())=>({townId:activityTown(c,date)?.id||c.townId||state.towns[0]?.id,...extra});
 
 function morningScripts(c,date){
@@ -765,12 +768,47 @@ const HOME_ACTIVITY_POOL=[
 ];
 const homeActivityPoolFor=c=>{
   const hobbies=[...(c.hobbies||[]),...(c.interests||[])].map(String);
-  return HOME_ACTIVITY_POOL.filter(([title])=>{
+  const likes=pattern=>hobbies.some(value=>pattern.test(value));
+  const pool=HOME_ACTIVITY_POOL.filter(([title])=>{
     if(title.includes("춤추는"))return hobbies.some(value=>/춤|댄스/.test(value));
     if(title.includes("악기를"))return hobbies.some(value=>/악기|기타|피아노|드럼|바이올린|연주/.test(value));
     if(title.includes("그림을 그리는"))return hobbies.some(value=>/그림|드로잉|스케치|회화|미술|일러스트/.test(value));
+    if(title.includes("향을 고르는"))return likes(/향수|향수 시향|조향|향기/);
+    if(title.includes("퍼즐을 맞추는"))return likes(/퍼즐|보드게임|방탈출/);
+    if(title.includes("수집품을 손질하는"))return likes(/수집|피규어|우표|레코드|프라모델/);
+    if(title.includes("빵을 굽는"))return likes(/베이킹|요리|빵/);
+    if(title.includes("새로운 음료를 만드는"))return likes(/커피|차 |차 우리기|칵테일|음료/);
+    if(title.includes("식물을 돌보는"))return likes(/식물|원예|자연/);
     return true;
   });
+  const housemates=state.order.map(id=>state.characters[id]).filter(other=>other&&other.id!==c.id&&other.homeId===c.homeId);
+  const ownerFor=pattern=>housemates.find(other=>[...(other.hobbies||[]),...(other.interests||[])].some(value=>pattern.test(String(value))));
+  const scentOwner=!likes(/향수|향수 시향|조향|향기/)&&ownerFor(/향수|향수 시향|조향|향기/);
+  if(scentOwner)pool.push([
+    `${scentOwner.name}의 향수들을 낯설게 살펴보는 중`,
+    `방 한쪽에 놓인 향수병을 조심스럽게 들여다보다 왜 이렇게 비슷해 보이는 향을 여러 개 두는지 이해하지 못한 채 다시 제자리에 놓았어요.`,
+    scentOwner.sleepRoomId||"bedroom"
+  ]);
+  const gameOwner=!likes(/게임|e스포츠|보드게임/)&&ownerFor(/게임|e스포츠|보드게임/);
+  const home=state.homes[c.homeId],hasGameMachine=Object.values(home?.rooms||{}).some(room=>(room.furniture||[]).includes("게임기"));
+  if(gameOwner&&hasGameMachine)pool.push([
+    "거실 게임기를 잠깐 만져 보는 중",
+    `${gameOwner.name}가 자주 쓰는 게임기의 메뉴를 몇 번 넘겨 봤지만 무엇이 재미있는지 잘 모르겠다는 표정으로 조작기를 내려놓았어요.`,
+    "living"
+  ]);
+  const artOwner=!likes(/그림|드로잉|미술|공예|도예|재봉|뜨개|목공/)&&ownerFor(/그림|드로잉|미술|공예|도예|재봉|뜨개|목공/);
+  if(artOwner)pool.push([
+    `${artOwner.name}의 작업 도구를 구경하는 중`,
+    `용도가 다른 도구가 너무 많아 어느 것을 어디에 쓰는지 가늠하지 못하고, 흐트러뜨리지 않도록 손대지 않은 채 모양만 살펴봤어요.`,
+    "study"
+  ]);
+  const instrumentOwner=!likes(/음악|악기|연주|기타|피아노|드럼|바이올린/)&&ownerFor(/악기|연주|기타|피아노|드럼|바이올린/);
+  if(instrumentOwner)pool.push([
+    `${instrumentOwner.name}의 악기를 바라보는 중`,
+    `손가락을 어디에 놓아야 소리가 나는지도 몰라 괜히 건드렸다 망가뜨릴까 봐 가까이에서 생김새만 살펴보고 있어요.`,
+    "study"
+  ]);
+  return pool;
 };
 
 const MEDIEVAL_HOME_SCRIPTS=[
@@ -989,7 +1027,7 @@ function build(c,date=new Date()){
   return list.map(item=>medievalize(c,item,date)).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260805j";
+const ENGINE_VERSION="20260805k";
 // 코드 업데이트는 이미 저장된 생활을 바꾸지 않습니다.
 // 캐릭터·관계·일정처럼 사용자가 직접 바꾼 설정만 새 장면 계산에 반영합니다.
 function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
@@ -1025,6 +1063,16 @@ function cleanSameMinuteEntries(entries){
   });
   return [...byMinute.values()].sort((a,b)=>a.minute-b.minute);
 }
+function cleanInvalidRoomAndHobbyEntries(c,entries){
+  const interests=[...(c.hobbies||[]),...(c.interests||[])].map(String);
+  const likesScent=interests.some(value=>/향수|향수 시향|조향|향기/.test(value));
+  return entries.filter(item=>!(item.title?.includes("침실에서 향을 고르는")&&!likesScent)).map(item=>{
+    if(item.home&&item.title?.startsWith("침실에서")&&item.room!==(c.sleepRoomId||"bedroom")){
+      return {...item,room:c.sleepRoomId||"bedroom"};
+    }
+    return item;
+  });
+}
 function companionWasActuallyThere(c,item,date){
   if(!item?.withId)return true;
   const other=state.characters[item.withId],otherDay=other?.days?.[dayKey(date)];
@@ -1042,8 +1090,8 @@ export function timeline(c,date=new Date()){
   c.days??={};
   const old=c.days[key];
   if(old?.entries){
-    const cleaned=cleanSameMinuteEntries(cleanExactRepeatedEntries(old.entries));
-    if(cleaned.length!==old.entries.length){old.entries=cleaned;save()}
+    const cleaned=cleanInvalidRoomAndHobbyEntries(c,cleanSameMinuteEntries(cleanExactRepeatedEntries(old.entries)));
+    if(JSON.stringify(cleaned)!==JSON.stringify(old.entries)){old.entries=cleaned;save()}
   }
   const today=key===dayKey(new Date());
   // 한 번 만든 하루의 기록은 앱 업데이트나 스크립트 팩 변경으로 다시 쓰지 않는다.
