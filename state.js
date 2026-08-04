@@ -149,7 +149,7 @@ function normalizeHomes(x){
   const relationIdsByKey=new Map();
   relationList.filter(Boolean).forEach(relation=>{
     const id=relation.id||uid();
-    const typeMap={"폴리 관계":"연인","절친":"친구","대학 동기":"젊은 날의 친구들"};
+    const typeMap={"폴리 관계":"연인","절친":"친구","대학 동기":"친구","젊은 날의 친구들":"친구"};
     relation.type=typeMap[relation.type]||relation.type||"친구";
     relation.interactions=Array.isArray(relation.interactions)?relation.interactions:[];
     relation.interactionsAll=Boolean(relation.interactionsAll);
@@ -295,6 +295,7 @@ function normalizeHomes(x){
     c.wealth=c.wealth||"평범한 형편";
     c.jobTitle=typeof c.jobTitle==="string"?c.jobTitle:"";
     c.workplaceId=c.workplaceId||"";
+    c.birthday=/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(c.birthday||"")?c.birthday:"";
     c.spiceTolerance=Number.isFinite(+c.spiceTolerance)?Math.max(0,Math.min(5,+c.spiceTolerance)):2;
     c.sweetPreference=Number.isFinite(+c.sweetPreference)?Math.max(0,Math.min(5,+c.sweetPreference)):2;
     c.socialEnergy=Number.isFinite(+c.socialEnergy)?Math.max(0,Math.min(6,+c.socialEnergy)):3;
@@ -350,7 +351,7 @@ export function save(immediate=false){
 export function createCharacter(limit=5){
   if(state.order.length>=Math.max(1,Number(limit)||5))return null;
   const id=uid();
-  state.characters[id]={id,name:"새 캐릭터",createdAt:Date.now(),ageGroup:"성인",gender:"그외",attractedGenders:[],touchReaction:"상황에 따라 자연스럽게 받아들임",appearanceLevel:"보통",appearanceInterest:"보통",appearanceTags:[],attractionTraits:[],job:"무직",jobTitle:"",workplaceId:"",photo:"",icon:"",wake:"07:30",wakeHabit:"알람을 듣고 천천히 일어남",sleep:"00:30",sleepHabit:"이불을 단정히 덮고 잠",income:"필요한 만큼 소비",wealth:"평범한 형편",spiceTolerance:2,sweetPreference:2,socialEnergy:3,sensingIntuition:3,thinkingFeeling:3,perceivingJudging:3,fashionSense:"보통",savedOutfits:[],theme:{primary:"#176b60",secondary:"#6fd0ae",gradient:true},tastes:[],interests:[],hobbies:[],musicGenres:[],foodTypes:[],foodPreferences:[],drinks:[],favorites:{},inventory:{},homeId:id};
+  state.characters[id]={id,name:"새 캐릭터",createdAt:Date.now(),ageGroup:"성인",gender:"그외",attractedGenders:[],touchReaction:"상황에 따라 자연스럽게 받아들임",appearanceLevel:"보통",appearanceInterest:"보통",appearanceTags:[],attractionTraits:[],job:"무직",jobTitle:"",workplaceId:"",birthday:"",photo:"",icon:"",wake:"07:30",wakeHabit:"알람을 듣고 천천히 일어남",sleep:"00:30",sleepHabit:"이불을 단정히 덮고 잠",income:"필요한 만큼 소비",wealth:"평범한 형편",spiceTolerance:2,sweetPreference:2,socialEnergy:3,sensingIntuition:3,thinkingFeeling:3,perceivingJudging:3,fashionSense:"보통",savedOutfits:[],theme:{primary:"#176b60",secondary:"#6fd0ae",gradient:true},tastes:[],interests:[],hobbies:[],musicGenres:[],foodTypes:[],foodPreferences:[],drinks:[],favorites:{},inventory:{},homeId:id};
   state.order.push(id);
   state.characters[id].townId=state.activeTownId;
   state.homes[id]={id,name:"새 캐릭터의 집",image:"",rooms:rooms(),pets:[],cleanliness:100};
