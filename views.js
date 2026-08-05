@@ -1,5 +1,5 @@
-import {state,active,characterViewFor} from "./state.js?v=20260806aq";
-import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806aq";
+﻿import {state,active,characterViewFor} from "./state.js?v=20260806ar";
+import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806ar";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const JOBS=["무직","학생","회사원","CEO","의사","간호사","교사","교수","정치인","기자","요리사","프로그래머","연구원","예술가","해적","군인","범죄자","환경미화원","여관주인","자영업·직접 입력"];
@@ -339,10 +339,10 @@ function homeCard(id,chars){
     const roomPets=pets.filter(p=>petScenes[p.id]?.roomKey===key);
     const shownPeople=roomPeople,shownPets=roomPets;
     const furniture=FURNITURE[room.type||key]||FURNITURE.other;
-    return `<div class="room ${roomClasses[key]||"custom-room"} ${edit?"room-edit-target":""}" ${roomStyle(h,key)} ${edit?`data-open-room-editor="${key}" data-home-id="${id}" tabindex="0" role="button" aria-label="${esc(room.name||key)} 편집`:""}>
+    return `<div class="room ${roomClasses[key]||"custom-room"} room-edit-target" ${roomStyle(h,key)} data-open-room-editor="${key}" data-home-id="${id}" tabindex="0" role="button" aria-label="${esc(room.name||key)} 편집">
       <b>${esc(room.name||key)}</b>
-      ${!room.image?`<button type="button" class="room-empty-image" data-open-room-image-menu="${key}" data-home-id="${id}"><span>＋</span>사진 추가하기</button>`:""}
-      ${edit?`<span class="room-edit-hint">눌러서 편집</span>`:""}
+      ${!room.image?`<button type="button" class="room-empty-image" data-open-room-editor="${key}" data-home-id="${id}"><span>＋</span>사진 추가하기</button>`:""}
+      <button type="button" class="room-edit-hint" data-open-room-editor="${key}" data-home-id="${id}">방 편집하기</button>
       <div class="room-people">${shownPeople.map(c=>{const e=sceneFor(c);return `<button class="home-person" data-home-person="${c.id}">${avatar(c)}<span><b>${esc(c.name)}</b><small>${esc(e?.title||"집에서 시간을 보내는 중")}</small></span></button>`}).join("")}</div>
       <div class="room-pets">${shownPets.map(p=>`<button class="room-pet" title="${esc(petScenes[p.id].desc)}">${p.icon?`<img class="room-pet-icon" src="${esc(p.icon)}" alt="">`:p.photo?`<img class="room-pet-photo" src="${esc(p.photo)}" alt="">`:`<span class="room-pet-emoji">${petEmoji[p.species]||"🐾"}</span>`}<span class="room-pet-status"><b>${esc(p.name)}</b><small>${esc(petScenes[p.id].title.replace(`${h.rooms?.[key]?.name||"집 안"}에서 `,""))}</small></span></button>`).join("")}</div>
     </div>`;
@@ -440,7 +440,7 @@ const CHARACTER_VIEW_OPTIONS={
   expectation:["정하지 않음","언제든 끝날 수 있다고 생각함","곧 헤어질 거라고 예상함","당분간 이어질 거라 생각함","오래 함께할 거라 기대함","평생 이어질 관계라고 믿음"],
   touchIntensity:["정하지 않음","신체 접촉 없음","인사·부축 같은 의례적 접촉만","손잡기·팔짱까지","포옹·기대기까지","가벼운 입맞춤까지","깊은 입맞춤까지","성인 간 친밀한 접촉까지"],
   aggression:["정하지 않음","공격 충동 없음","거친 말을 하고 싶은 충동","몸으로 밀어내고 싶은 충동","해치고 싶은 충동","죽이고 싶을 만큼 격한 충동"],
-  aggressionAction:["정하지 않음","행동으로 옮기지 않음","대부분 참지만 가끔 거친 말이 나옴","거친 말로만 표출함","물건이나 벽에 화풀이할 수 있음","상대를 밀칠 수 있음","실제로 때릴 수 있음","심한 폭력을 행사할 수 있음"]
+  aggressionAction:["정하지 않음","행동으로 옮기지 않음","대부분 참지만 가끔 거친 말이 나옴","거친 말로만 표출함","물건이나 벽에 화풀이할 수 있음","상대를 때릴 수 있음","실제로 때릴 수 있음","심한 폭력을 행사할 수 있음"]
 };
 const characterViewOptions=key=>{
   if(key==="importance")return["선택하지 않음",...state.order.map((_,index)=>`${index+1}순위${index===0?" · 가장 중요한 사람":""}`)];
@@ -452,7 +452,7 @@ const characterViewEditor=()=>{
     const explicit=state.characterViews?.[sourceId]?.[targetId]||{};
     const current=explicit[key]==="정하지 않음"?"선택하지 않음":(explicit[key]||"선택하지 않음");
     const options=characterViewOptions(key),legacy=current!=="선택하지 않음"&&!options.includes(current)?[current]:[];
-    return `<label class="${key==="aggressionAction"?"view-aggression-action":""}"><span><b>${label}</b><small>${help}</small></span><select data-character-view data-source="${sourceId}" data-target="${targetId}" data-view-field="${key}">${[...legacy,...options].map(value=>`<option ${value===current?"selected":""}>${value}</option>`).join("")}</select>${key==="aggressionAction"?`<small class="field-warning">‘상대를 밀칠 수 있음’ 이상을 고르면 설정한 충동·갈등·성격에 따라 상대를 밀치거나 때리는 장면이 나올 수 있어요. 충동만 있고 실행하지 않는 캐릭터는 반드시 ‘행동으로 옮기지 않음’을 골라 주세요.</small>`:""}</label>`;
+    return `<label class="${key==="aggressionAction"?"view-aggression-action":""}"><span><b>${label}</b><small>${help}</small></span><select data-character-view data-source="${sourceId}" data-target="${targetId}" data-view-field="${key}">${[...legacy,...options].map(value=>`<option ${value===current?"selected":""}>${value}</option>`).join("")}</select>${key==="aggressionAction"?`<small class="field-warning">‘상대를 때릴 수 있음’ 이상을 고르면 설정한 충동·갈등·성격에 따라 낮은 수위의 폭행 장면이 나올 수 있어요. 충동만 있고 실행하지 않는 캐릭터는 반드시 ‘행동으로 옮기지 않음’을 골라 주세요.</small>`:""}</label>`;
   };
   const panels=state.order.map(sourceId=>{
     const source=state.characters[sourceId],targets=state.order.filter(id=>id!==sourceId);
@@ -490,7 +490,12 @@ function relationshipReality(a,b,official=[]){
   const sibling=official.some(relation=>relation.type==="형제·자매");
   if(sibling&&(distant(av)||distant(bv)||hate(av)||hate(bv)))return past?"절연한 형제 사이":"가족이지만 사실상 절연";
   if(love(av)&&love(bv)&&confirmed(av)&&confirmed(bv))return distant(av)||distant(bv)?"서로 사랑하지만 가까워지기 어려운 사이":"서로 마음을 확인한 사이";
-  if(love(av)&&love(bv))return distrust(av)||distrust(bv)?"쌍방 연심이지만 서로 믿지 못함":"쌍방 짝사랑";
+  if(love(av)&&love(bv)){
+    const denied=value=>/인정하지|오해하고|눈치챔|전혀 모름/.test(value?.mutualAwareness||"")||/부정|잘못 해석/.test(value?.awareness||"");
+    if(denied(av)&&denied(bv))return"쌍방 연심이지만 인정하지 않음";
+    if(hate(av)&&hate(bv))return"서로 반감을 품고도 끌리는 사이";
+    return distrust(av)||distrust(bv)?"쌍방 연심과 불신이 함께 있는 사이":"쌍방 짝사랑";
+  }
   if(love(av)!==love(bv))return"한쪽만 품고 있는 연심";
   if(hate(av)&&hate(bv))return conflict(av)||conflict(bv)?"서로 강하게 맞서는 사이":"서로 반감을 품은 사이";
   if(close(av)&&close(bv))return"서로 의지하는 사이";

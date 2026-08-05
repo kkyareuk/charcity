@@ -52,6 +52,7 @@ const digestBlob=async blob=>{
 
 function shortError(error){
   const code=String(error?.code||"unknown").replace(/^firebase\//,"");
+  if(code.includes("character-slot-limit"))return `캐릭터 슬롯 초과 (${error?.detail||""}) · 초과 인원을 정리한 뒤 다시 저장해 주세요`;
   if(code.includes("permission-denied")||code.includes("unauthorized"))return "저장 권한 확인 필요";
   if(code.includes("bucket-not-found")||code.includes("object-not-found"))return "사진 저장소 확인 필요";
   if(code.includes("quota"))return "Storage 용량 초과 · Firebase 요금제와 저장 파일을 확인해 주세요";
@@ -201,8 +202,19 @@ async function upload({silent=false,reason=""}={}){
   busy=true;
   try{
     status(`${user.displayName||"계정"} · 올리는 중`);
+    const localState=window.ParallelCity.getState();
+    const allowedCharacters=7+(Math.max(0,Number(entitlements.characterSlotPacks)||0)*5);
+    const localCharacterCount=Array.isArray(localState?.order)
+      ?new Set(localState.order.filter(id=>localState.characters?.[id])).size
+      :Object.keys(localState?.characters||{}).length;
+    if(localCharacterCount>allowedCharacters){
+      throw Object.assign(new Error("character-slot-limit"),{
+        code:"sync/character-slot-limit",
+        detail:`${localCharacterCount}/${allowedCharacters}`
+      });
+    }
     const previousSnapshot=await getDoc(cloudDoc()),previous=previousSnapshot.exists()?previousSnapshot.data():null;
-    const prepared=await prepareState(window.ParallelCity.getState(),normalizeManifest(previous?.mediaManifest,previous?.gameState));
+    const prepared=await prepareState(localState,normalizeManifest(previous?.mediaManifest,previous?.gameState));
     const {gameState,mediaManifest,uploadedCount}=prepared;
     await setDoc(cloudDoc(),{gameState,mediaManifest,updatedAt:serverTimestamp(),profile:{name:user.displayName||"",email:user.email||""}},{merge:true});
     publishStorageUsage(mediaManifest,gameState);

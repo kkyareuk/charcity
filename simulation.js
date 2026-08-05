@@ -1,4 +1,4 @@
-import {state,save,characterViewFor} from "./state.js?v=20260806aq";
+﻿import {state,save,characterViewFor} from "./state.js?v=20260806ar";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -191,6 +191,7 @@ const AGGRESSION_ACTION_LEVEL={
   "거친 말로만 표출함":1,
   "물건이나 벽에 화풀이할 수 있음":2,
   "상대를 밀칠 수 있음":3,
+  "상대를 때릴 수 있음":3,
   "실제로 때릴 수 있음":4,
   "심한 폭력을 행사할 수 있음":5
 };
@@ -709,8 +710,17 @@ function relationshipHomeEntry(c,pick,time,date){
   if(r.temporalStatus==="past"){
     const faultName=r.faultParty==="both"?"두 사람 모두":r.faultParty==="none"?"누구도":state.characters[r.faultParty]?.name||"누구인지 정하지 않은 쪽";
     const reason=r.faultReason&&r.faultReason!=="정하지 않음"?`${r.faultReason} 때문에`:"여러 사정으로";
+    const presentFeeling=/사랑|좋아/.test(overall)?"마음이 남아 있어도":/싫|혐오|증오/.test(overall)?"반감이 아직 남아 있어도":"지금은 감정이 크지 않아도";
+    const faultBeat=/금전|빚|과소비|재산|수입/.test(r.faultReason||"")
+      ?`${presentFeeling} 돈을 빌리거나 대신 결제하는 일은 하지 않았고, 공동 비용과 남은 물건만 기록을 확인하며 정리했어요.`
+      :/거짓말|은폐|신뢰/.test(r.faultReason||"")
+        ?`${presentFeeling} 설명을 곧바로 믿지 않고 확인 가능한 사실과 약속만 기준으로 대화를 이어 갔어요.`
+        :/연락 단절/.test(r.faultReason||"")
+          ?`${presentFeeling} 답을 재촉하지 않았고, 꼭 전달해야 할 내용만 한 번 남긴 뒤 더 연락하지 않았어요.`
+          :`${presentFeeling} 끝난 이유를 되풀이해 다투지 않고 현재 필요한 경계만 분명히 지켰어요.`;
     scripts=[
       [`${other.name}와 끝난 관계의 경계를 지키는 중`,`${reason} 관계가 끝났다는 사실을 알고 있어요. ${faultName}에게 책임이 있다고 정리한 기억과 지금의 속마음을 구분하며, 예전처럼 친근하게 굴지 않고 필요한 말만 나누고 있어요.`,"living"],
+      [`${other.name}와 남은 문제를 정리하는 중`,faultBeat,"study"],
       [`${other.name}와 과거의 일을 조심스럽게 정리하는 중`,`${r.stage||"끝난 관계"}라는 현재 상태에 맞춰 연락과 만남의 거리를 지켰어요. 미련이나 반감이 남아 있더라도 이미 끝난 관계의 권리를 요구하지 않았어요.`,"study"],
       [`${other.name}을 마주치고도 옛 습관을 멈추는 중`,`예전 같으면 자연스럽게 챙겼을 일을 하려다 손을 거두었어요. 지금 두 사람의 시선과 경계가 허용하는 만큼만 반응하고 각자의 자리로 돌아갔어요.`,"living"]
     ];
@@ -1265,7 +1275,7 @@ function build(c,date=new Date()){
   return list.map(item=>medievalize(c,item,date)).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260806aq";
+const ENGINE_VERSION="20260806ar";
 // 코드 업데이트는 이미 저장된 생활을 바꾸지 않습니다.
 // 캐릭터·관계·일정처럼 사용자가 직접 바꾼 설정만 새 장면 계산에 반영합니다.
 function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
@@ -1709,10 +1719,10 @@ function heightenedConflictBeat(first,second,tensionKey,variant){
   const level=aggressionExpressionLevel(first,characterViewFor(first.id,second.id));
   if(level<3)return "";
   if(level===3)return [
-    `${first.name}은(는) 욱한 순간 ${second.name}을(를) 한 번 밀쳤지만 곧 손을 거두고 더 가까이 오지 말라고 경고했어요.`,
-    `${first.name}은(는) ${second.name}의 팔을 밀어 거리를 벌린 뒤 더 손을 쓰기 전에 대화를 끊었어요.`,
-    `${first.name}은(는) 순간적으로 어깨를 밀쳤다가 바로 물러서며 흥분이 가라앉을 때까지 떨어져 있었어요.`,
-    `${first.name}은(는) 길을 막은 ${second.name}을(를) 밀어냈지만 뒤쫓아가 공격하지는 않았어요.`
+    `${first.name}은(는) 욱한 순간 ${second.name}의 팔을 한 차례 쳤어요. ${second.name}은(는) 맞서 때리지 않고 팔을 막으며 곧바로 거리를 벌렸어요.`,
+    `${first.name}은(는) 말다툼 끝에 ${second.name}의 어깨를 한 번 가격했어요. ${second.name}은(는) 반격하지 않고 손을 막아 세운 뒤 자리를 피했어요.`,
+    `${first.name}은(는) 순간적으로 ${second.name}을 한 차례 때렸지만 계속 쫓아가지는 않았어요. ${second.name}은(는) 몸을 지키며 사람 있는 쪽으로 물러났어요.`,
+    `${first.name}은(는) 화를 참지 못하고 ${second.name}의 팔을 세게 쳤어요. ${second.name}은(는) 맞서 싸우지 않고 더 다가오지 말라고 경고했어요.`
   ][variant];
   return [
     `${first.name}은(는) 쌓인 말이 터지자 ${second.name}과(와) 거칠게 치고받았어요. 한차례 몸싸움 뒤 둘은 숨을 고르며 더 이어 가지 않았어요.`,

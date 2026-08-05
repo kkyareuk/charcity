@@ -1,7 +1,7 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806aq";
-import {eventFor} from "./simulation.js?v=20260806aq";
-import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806aq";
-import {recordCharacterInteraction} from "./state.js?v=20260806aq";
+﻿import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806ar";
+import {eventFor} from "./simulation.js?v=20260806ar";
+import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806ar";
+import {recordCharacterInteraction} from "./state.js?v=20260806ar";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -415,14 +415,19 @@ const roomIllustration=(type="other",index=0)=>{
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-function openRoomImageMenu(homeId,roomKey){
+function openRoomImageMenu(homeId,roomKey,{returnToEditor=true}={}){
   const room=state.homes[homeId]?.rooms?.[roomKey];if(!room)return;
+  const usage=window.ParallelCityAuth?.getInfo?.().storageUsage||{};
+  const usedMB=((Number(usage.bytes)||0)/1048576).toFixed(1);
+  const maxMB=((Number(usage.maxBytes)||20*1048576)/1048576).toFixed(0);
+  let movedForward=false;
   const dialog=document.createElement("dialog");dialog.className="room-image-dialog";
-  dialog.innerHTML=`<form method="dialog"><div class="title"><div><small>${room.name||"방"}</small><h2>어떤 사진을 넣을까요?</h2></div><button value="close" aria-label="닫기">×</button></div><div class="room-image-choice"><button type="button" data-room-illustrations>🎨<b>일러스트 고르기</b><small>앱에 준비된 배경</small></button><button type="button" data-room-file>🖼️<b>이미지 첨부하기</b><small>내 기기에서 선택</small></button><button type="button" data-room-link>🔗<b>링크 추가하기</b><small>공개 이미지 주소</small></button></div></form>`;
-  dialog.querySelector("[data-room-illustrations]").onclick=()=>{dialog.close();openRoomIllustrations(homeId,roomKey)};
-  dialog.querySelector("[data-room-file]").onclick=()=>{dialog.close();pickImage("room",homeId,roomKey)};
-  dialog.querySelector("[data-room-link]").onclick=async()=>{dialog.close();await useImageUrl("room",homeId,roomKey)};
-  dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();
+  dialog.innerHTML=`<form method="dialog"><div class="title"><div><small>${room.name||"방"}</small><h2>어떤 사진을 넣을까요?</h2></div><button value="close" aria-label="닫기">×</button></div><div class="room-image-choice"><button type="button" data-room-illustrations>🎨<b>일러스트 고르기</b><small>앱에 준비된 배경</small></button><button type="button" data-room-file>🖼️<b>이미지 첨부하기</b><small>내 기기에서 선택 · ${usedMB}MB / ${maxMB}MB 사용 중</small></button><button type="button" data-room-link>🔗<b>링크 추가하기</b><small>공개 이미지 주소 · 저장 용량 미사용</small></button></div></form>`;
+  dialog.querySelector("[data-room-illustrations]").onclick=()=>{movedForward=true;dialog.close();openRoomIllustrations(homeId,roomKey)};
+  dialog.querySelector("[data-room-file]").onclick=()=>{movedForward=true;dialog.close();pickImage("room",homeId,roomKey)};
+  dialog.querySelector("[data-room-link]").onclick=async()=>{movedForward=true;dialog.close();await useImageUrl("room",homeId,roomKey)};
+  dialog.onclose=()=>{dialog.remove();if(returnToEditor&&!movedForward)openRoomEditor(homeId,roomKey)};
+  document.body.append(dialog);dialog.showModal();
 }
 function openRoomIllustrations(homeId,roomKey){
   const room=state.homes[homeId]?.rooms?.[roomKey];if(!room)return;
@@ -438,7 +443,7 @@ function openRoomEditor(homeId,roomKey){
   dialog.innerHTML=`<form method="dialog"><div class="title"><div><small>방 편집</small><h2>${room.name||"방"}</h2></div><button value="close">×</button></div><div class="room-editor-fields"><label>방 이름<input name="name" value="${String(room.name||"방").replace(/"/g,"&quot;")}"></label><label>방 유형<select name="type">${Object.entries(ROOM_EDITOR_TYPES).map(([value,label])=>`<option value="${value}" ${room.type===value?"selected":""}>${label}</option>`).join("")}</select></label></div><button type="button" class="room-editor-photo" data-edit-room-photo>${room.image?`<span style="background-image:url('${room.image}')"></span><b>방 사진 변경</b>`:"<span>＋</span><b>방 사진 추가하기</b>"}</button><div><b>이 방에 있는 가구</b><p class="room-editor-note">장면에 실제로 등장할 수 있는 가구만 선택해 주세요.</p><div class="room-editor-furniture">${drawFurniture()}</div></div><div class="crop-actions"><button type="button" class="danger" data-room-delete>방 삭제</button><button class="primary" value="save">완료</button></div></form>`;
   const sync=()=>{updateRoom(homeId,roomKey,{name:dialog.querySelector('[name="name"]').value.trim()||"방"});const nextType=dialog.querySelector('[name="type"]').value;if(nextType!==room.type)setRoomType(homeId,roomKey,nextType)};
   dialog.querySelector('[name="type"]').onchange=()=>{sync();dialog.close();openRoomEditor(homeId,roomKey)};
-  dialog.querySelector("[data-edit-room-photo]").onclick=()=>{sync();dialog.close();openRoomImageMenu(homeId,roomKey)};
+  dialog.querySelector("[data-edit-room-photo]").onclick=()=>{sync();dialog.returnValue="photo";dialog.close();openRoomImageMenu(homeId,roomKey,{returnToEditor:true})};
   dialog.querySelectorAll("[data-room-furniture]").forEach(button=>button.onclick=()=>{toggleFurniture(homeId,roomKey,button.dataset.roomFurniture);button.classList.toggle("on")});
   dialog.querySelector("[data-room-delete]").onclick=()=>{if(confirm(`${room.name||"이 방"}을 삭제할까요?`)){deleteRoom(homeId,roomKey);dialog.close();explicitSave("방 삭제")}};
   dialog.onclose=()=>{if(dialog.returnValue==="save"){sync();save(true);render()}dialog.remove()};
@@ -611,7 +616,8 @@ function bind(){
   $("[data-add-room]")?.addEventListener("click",()=>{addRoom(state.activeHomeId);render()});
   $$("[data-open-room-editor]").forEach(el=>{
     el.onclick=event=>{
-      if(event.target.closest("[data-home-person],button"))return;
+      if(event.target.closest("[data-home-person],.room-pet"))return;
+      event.stopPropagation();
       openRoomEditor(el.dataset.homeId,el.dataset.openRoomEditor);
     };
     el.onkeydown=event=>{if(["Enter"," "].includes(event.key)){event.preventDefault();openRoomEditor(el.dataset.homeId,el.dataset.openRoomEditor)}};
@@ -1207,7 +1213,7 @@ const PAST_RELATION_STAGES={
   default:["관계가 끝난 직후","아직 감정이 남아 있음","서로 피하는 중","필요할 때만 연락함","완전히 정리된 과거 관계"]
 };
 const stagesFor=(type,temporalStatus="current")=>temporalStatus==="past"?(PAST_RELATION_STAGES[type]||(["소꿉친구","학창 시절 친구들","친구 모임","산악회"].includes(type)?PAST_RELATION_STAGES.친구:PAST_RELATION_STAGES.default)):(RELATION_STAGES[type]||(["소꿉친구","학창 시절 친구들","친구 모임","산악회"].includes(type)?RELATION_STAGES.친구:RELATION_STAGES.default));
-const FAULT_REASONS=["정하지 않음","누구의 잘못도 아님","성격 차이","신뢰를 깨뜨림","거짓말과 은폐","약속·책임을 지키지 않음","일방적인 연락 단절","지나친 통제와 간섭","반복된 갈등","가족·주변인의 개입","생활 방식·미래 계획 차이","거리·이사·환경 변화","직장·학교 등 여건 변화","서로 자연스럽게 멀어짐","기타"];
+const FAULT_REASONS=["정하지 않음","누구의 잘못도 아님","성격 차이","신뢰를 깨뜨림","거짓말과 은폐","금전 문제","빚·과소비","재산·수입 갈등","약속·책임을 지키지 않음","일방적인 연락 단절","지나친 통제와 간섭","반복된 갈등","가족·주변인의 개입","생활 방식·미래 계획 차이","거리·이사·환경 변화","직장·학교 등 여건 변화","서로 자연스럽게 멀어짐","기타"];
 const relationViewDefaults=(type,temporalStatus="current")=>{
   if(temporalStatus==="past")return {overall:"그저 그런 사람",importance:"선택하지 않음",awareness:"자기 감정을 분명히 자각함",mutualAwareness:"상대의 마음을 전혀 모름",trust:"조심스럽게 지켜봄",closeness:"거리감 있음",comfort:"어색하지만 필요한 대화는 무난함",annoyance:"가끔 성가심",attention:"관심 없음",jealousy:"질투하지 않음",conflictIntensity:"가끔 부딪힘",expectation:"언제든 끝날 수 있다고 생각함",touchIntensity:"신체 접촉 없음",aggression:"공격 충동 없음",aggressionAction:"행동으로 옮기지 않음"};
   if(["연인","부부"].includes(type))return {overall:"연애 감정으로 좋아함",importance:"1순위 · 가장 중요한 사람",awareness:"자기 감정을 분명히 자각함",mutualAwareness:"서로의 마음을 확인함",trust:"어느 정도 믿음",closeness:"가까운 사이",comfort:"편안하고 농담과 장난이 잘 통함",annoyance:"전혀 귀찮거나 성가시지 않음",attention:"자주 살핌",jealousy:"가끔 신경 쓰임",conflictIntensity:"갈등이 거의 없음",expectation:"오래 함께할 거라 기대함",touchIntensity:"포옹·기대기까지",aggression:"공격 충동 없음",aggressionAction:"행동으로 옮기지 않음"};
@@ -1447,13 +1453,13 @@ if(!maintenanceEnabled()&&state.order.length&&localStorage.getItem("drawer-villa
   document.body.append(notice);notice.showModal();
 }
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260806aq").catch(error=>{
+  import("./auth.js?v=20260806ar").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260806aq",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260806ar",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();
