@@ -1,4 +1,4 @@
-import {state,save,characterViewFor} from "./state.js?v=20260805y";
+import {state,save,characterViewFor} from "./state.js?v=20260805z";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -1185,7 +1185,7 @@ function build(c,date=new Date()){
   return list.map(item=>medievalize(c,item,date)).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260805y";
+const ENGINE_VERSION="20260805z";
 // 코드 업데이트는 이미 저장된 생활을 바꾸지 않습니다.
 // 캐릭터·관계·일정처럼 사용자가 직접 바꾼 설정만 새 장면 계산에 반영합니다.
 function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
@@ -1426,8 +1426,111 @@ function significantEncounter(pair,group,date){
   }
   return "";
 }
+const RELATION_COMBINATION_BONDS=[
+  {key:"devoted",label:"서로를 가장 깊이 사랑함",test:(a,b)=>/깊이 사랑|없어서는 안 될/.test(`${a.overall} ${b.overall}`),actions:[
+    (a,b)=>`${a.name}은(는) 사소한 변화부터 알아보고 ${b.name}이(가) 말하기 전에 필요한 것을 건넸어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}과(와) 눈이 마주치자 굳이 설명하지 않아도 알겠다는 듯 자리를 가까이했어요.`,
+    (a,b)=>`${a.name}은(는) 다른 사람과 이야기하면서도 ${b.name}의 표정과 움직임을 놓치지 않았어요.`,
+    (a,b)=>`${a.name}은(는) 먼저 떠나려다가 ${b.name}의 속도에 맞춰 함께 움직이기로 했어요.`]},
+  {key:"romantic",label:"분명한 연심을 품음",test:(a,b)=>/연애 감정/.test(`${a.overall} ${b.overall}`),actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}과(와) 나란히 할 수 있는 일을 골라 자연스럽게 둘만의 시간을 만들었어요.`,
+    (a,b)=>`${a.name}은(는) 가까워진 거리를 의식하면서도 물러나지 않고 ${b.name}의 이야기를 들었어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}에게만 알아들을 수 있는 짧은 농담을 건네며 웃었어요.`,
+    (a,b)=>`${a.name}은(는) 헤어질 시간이 되었는데도 대화를 하나 더 꺼내 조금 더 머물렀어요.`]},
+  {key:"unspoken",label:"말하지 못한 마음이 있음",test:(a,b)=>/싹틈|부정함|전혀 모름|우정으로 착각/.test(`${a.overall} ${a.awareness} ${b.overall} ${b.awareness}`),actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}을(를) 먼저 도와 놓고도 특별한 뜻은 없었다는 듯 시선을 돌렸어요.`,
+    (a,b)=>`${a.name}은(는) 둘만 남자 갑자기 말수가 줄었지만 자리를 피하지는 않았어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}이(가) 다른 사람과 웃는 모습을 오래 보다가 뒤늦게 하던 일로 돌아갔어요.`,
+    (a,b)=>`${a.name}은(는) 먼저 연락할 이유를 찾지 못해 망설이다가 사소한 핑계를 하나 만들었어요.`]},
+  {key:"precious",label:"소중한 사람으로 여김",test:(a,b)=>/소중|안쓰럽|존경|동경/.test(`${a.overall} ${b.overall}`),actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}이(가) 곤란해지기 전에 조용히 옆에서 일을 나눠 맡았어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}의 말을 끊지 않고 끝까지 들은 뒤 현실적인 도움을 하나 제안했어요.`,
+    (a,b)=>`${a.name}은(는) 사람들 사이에서도 ${b.name}이(가) 불편하지 않은지 먼저 살폈어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}이(가) 무사히 돌아가는 것을 확인하고서야 자기 일로 돌아갔어요.`]},
+  {key:"friends",label:"편하고 가까운 우정",test:(a,b)=>/친구로 좋아|인간적인 호감/.test(`${a.overall} ${b.overall}`),actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}에게 방금 본 것을 과장해 이야기하며 자연스럽게 웃음을 끌어냈어요.`,
+    (a,b)=>`${a.name}은(는) 말이 잠시 끊겨도 어색해하지 않고 ${b.name}과(와) 각자 할 일을 이어 갔어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}의 실수를 가볍게 놀린 뒤 아무렇지 않게 수습을 도왔어요.`,
+    (a,b)=>`${a.name}은(는) 다음에 같이 할 일을 즉석에서 정하고 짧게 손을 흔들었어요.`]},
+  {key:"family",label:"생활에 밴 가족애",test:(a,b,r)=>["부모·자녀","형제·자매"].includes(r?.type),actions:[
+    (a,b)=>`${a.name}은(는) 묻지도 않고 ${b.name}의 몫까지 챙겼고, ${b.name}도 익숙하다는 듯 받아들였어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}의 생활 습관을 잔소리하면서도 필요한 것은 이미 준비해 두었어요.`,
+    (a,b)=>`${a.name}은(는) 남들 앞에서는 퉁명스럽게 굴었지만 ${b.name}이(가) 곤란해지자 바로 편을 들었어요.`,
+    (a,b)=>`${a.name}은(는) 돌아갈 시간을 재촉하면서도 결국 ${b.name}과(와) 같은 방향으로 움직였어요.`]},
+  {key:"rivals",label:"서로를 의식하는 경쟁 관계",test:(a,b)=>/경쟁심/.test(`${a.overall} ${b.overall}`),actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}의 방식을 유심히 본 뒤 조금 더 나은 결과를 내려고 속도를 올렸어요.`,
+    (a,b)=>`${a.name}은(는) 칭찬 대신 허점을 하나 짚었지만, 실력만큼은 인정하는 기색을 숨기지 못했어요.`,
+    (a,b)=>`${a.name}은(는) 다른 사람이 ${b.name}을(를) 낮게 평가하자 자신이 이길 상대를 함부로 보지 말라고 잘라 말했어요.`,
+    (a,b)=>`${a.name}은(는) 다음에는 확실히 승부를 내자고 말하며 먼저 돌아섰어요.`]},
+  {key:"love_hate",label:"애정과 반감이 동시에 있음",test:(a,b)=>/애증/.test(`${a.overall} ${b.overall}`)||(/사랑/.test(a.overall||"")&&/싫어|미워|애증/.test(b.overall||""))||(/사랑/.test(b.overall||"")&&/싫어|미워|애증/.test(a.overall||"")),actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}을(를) 도와주면서도 왜 자신이 이러고 있는지 화가 난다는 듯 말을 거칠게 했어요.`,
+    (a,b)=>`${a.name}은(는) 가까이 있고 싶어 하면서도 먼저 다정하게 굴지는 못해 사소한 시비를 걸었어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}을(를) 험하게 말하다가 다른 사람이 같은 말을 하자 표정이 단단히 굳었어요.`,
+    (a,b)=>`${a.name}은(는) 다시는 보지 말자고 말했지만 ${b.name}이(가) 무사히 떠나는 모습까지 지켜봤어요.`]},
+  {key:"hostile",label:"서로를 경계하거나 미워함",test:(a,b,r)=>["혐관","적","라이벌"].includes(r?.type)||/매우 싫어|미워|경계/.test(`${a.overall} ${b.overall}`),actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}의 동선을 살피며 등을 보이지 않고 필요한 말만 짧게 주고받았어요.`,
+    (a,b)=>`${a.name}은(는) 둘만 남자 침묵을 깨지 않은 채 서로의 다음 행동을 경계했어요.`,
+    (a,b)=>`${a.name}은(는) 다른 사람 앞에서 감정을 드러내지 않았지만 ${b.name}의 말에는 즉시 반박했어요.`,
+    (a,b)=>`${a.name}은(는) 더 충돌하기 전에 먼저 자리를 벗어나며 다음에는 물러서지 않겠다고 생각했어요.`]},
+  {key:"distant",label:"아직 거리가 있는 사이",test:()=>true,actions:[
+    (a,b)=>`${a.name}은(는) ${b.name}과(와) 필요한 역할을 나누되 서로의 영역을 침범하지 않았어요.`,
+    (a,b)=>`${a.name}은(는) 어색한 침묵이 길어지기 전에 무난한 화제를 하나 꺼냈어요.`,
+    (a,b)=>`${a.name}은(는) 다른 사람들과 함께 있을 때만 ${b.name}에게 자연스럽게 말을 건넸어요.`,
+    (a,b)=>`${a.name}은(는) 짧게 인사하고 각자 가야 할 방향으로 돌아섰어요.`]}
+];
+const RELATION_COMBINATION_TENSIONS=[
+  {key:"violent",label:"사랑과 위해 충동이 충돌함",test:(a,b)=>/해치고 싶|죽이고 싶/.test(`${a.aggression} ${b.aggression}`),lines:[
+    (a,b)=>`그러나 ${a.name}은(는) 애정과 별개로 ${b.name}을(를) 해치고 싶은 충동이 치밀자 손에 힘을 주었다가 스스로 거리를 벌렸어요.`,
+    (a,b)=>`둘은 성인 사이의 친밀함을 허용할 만큼 가까울 수 있어도, 분노가 올라온 순간에는 접촉을 멈추고 날 선 말로 맞섰어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}에게 화가 났지만 충동대로 행동하지 않기 위해 물건을 내려놓고 대화를 중단했어요.`,
+    (a,b)=>`서로를 원하는 마음과 안전하게 함께할 수 있는지는 다른 문제라, 둘은 감정이 가라앉을 때까지 각자 떨어져 있기로 했어요.`]},
+  {key:"explosive",label:"애정과 격렬한 갈등이 공존함",test:(a,b)=>/격렬하게|파국적인|자주 충돌/.test(`${a.conflictIntensity} ${b.conflictIntensity}`),lines:[
+    ()=>`사소한 방식 차이가 곧바로 언쟁으로 번졌지만 두 사람 모두 관계 자체를 포기한 듯 자리를 뜨지는 않았어요.`,
+    ()=>`가까운 거리와 편한 접촉은 허용하면서도 의견이 맞부딪치자 말투가 빠르게 거칠어졌어요.`,
+    ()=>`주변 사람이 눈치를 볼 만큼 날카롭게 다퉜지만, 정작 다른 사람이 끼어드는 것은 둘 다 원하지 않았어요.`,
+    ()=>`오늘의 싸움을 오늘 끝내지는 못했지만 최소한 다음 대화를 위한 시간과 장소는 정해 두었어요.`]},
+  {key:"distrust",label:"끌리지만 믿지 못함",test:(a,b)=>/전혀 믿지 않|의심함/.test(`${a.trust} ${b.trust}`),lines:[
+    (a,b)=>`${a.name}은(는) 다정한 행동을 받아들이면서도 그 의도를 확인하려는 질문을 멈추지 않았어요.`,
+    ()=>`둘 사이의 거리와 접촉은 가까웠지만, 중요한 정보만큼은 서로에게 전부 내보이지 않았어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}이(가) 다른 사람과 나눈 말을 기억해 두고 앞뒤가 맞는지 조용히 따져 봤어요.`,
+    ()=>`함께 돌아가자는 제안에는 응했지만 완전히 등을 맡기지는 않은 채 나란히 걸었어요.`]},
+  {key:"strained",label:"좋아하지만 함께 있으면 불편함",test:(a,b)=>/숨 막히|매우 불편|공간 공유는 불편|긴장하고/.test(`${a.comfort} ${b.comfort}`)||/많이 귀찮|보기만 해도 피곤/.test(`${a.annoyance} ${b.annoyance}`),lines:[
+    (a,b)=>`${a.name}은(는) ${b.name}을(를) 싫어하지 않지만 같은 공간에 오래 있자 숨이 막혀 창가 쪽으로 자리를 옮겼어요.`,
+    ()=>`둘만 있으면 불편해하면서도 농담의 호흡은 잘 맞아, 거리를 둔 채 한참 웃고 떠들었어요.`,
+    (a,b)=>`${a.name}은(는) ${b.name}을(를) 많이 성가셔하면서도 다른 사람이 데려가려 하자 조금 더 있으라고 붙잡았어요.`,
+    ()=>`연락을 귀찮아해 답을 미뤘지만, 헤어지기 전에는 다음에 볼 수 있는 날을 대충이라도 확인했어요.`]},
+  {key:"steady",label:"갈등을 안전하게 조율함",test:()=>true,lines:[
+    ()=>`의견이 조금 달랐지만 각자 원하는 것을 한 번씩 말한 뒤 무리 없는 쪽으로 조정했어요.`,
+    ()=>`가까이 머무는 동안 서로가 허용한 거리와 접촉 범위를 자연스럽게 지켰어요.`,
+    ()=>`다른 사람이 끼어들어도 둘 사이의 대화가 끊기지 않도록 하던 이야기를 차분히 마무리했어요.`,
+    ()=>`헤어지기 전에 오늘 불편했던 점이 없는지 짧게 확인하고 다음 일정을 정했어요.`]}
+];
+const RELATION_COMBINATION_PROFILES=RELATION_COMBINATION_BONDS.flatMap((bond,bondIndex)=>
+  RELATION_COMBINATION_TENSIONS.map((tension,tensionIndex)=>({key:`${bond.key}_${tension.key}`,label:`${bond.label} · ${tension.label}`,bondIndex,tensionIndex}))
+);
+function relationCombinationScene(place,first,second,relation,date){
+  const firstView=state.characterViews?.[first.id]?.[second.id]||{};
+  const secondView=state.characterViews?.[second.id]?.[first.id]||{};
+  if(!relation&&Object.keys(firstView).length+Object.keys(secondView).length<2)return null;
+  const foundBond=RELATION_COMBINATION_BONDS.findIndex(item=>item.test(firstView,secondView,relation));
+  const foundTension=RELATION_COMBINATION_TENSIONS.findIndex(item=>item.test(firstView,secondView,relation));
+  const bondIndex=Math.max(0,foundBond),tensionIndex=Math.max(0,foundTension);
+  const profile=RELATION_COMBINATION_PROFILES.find(item=>item.bondIndex===bondIndex&&item.tensionIndex===tensionIndex);
+  const variant=hash(`${first.id}:${second.id}:${dayKey(date)}:${Math.floor(nowMin(date)/45)}:${profile.key}`)%4;
+  const reverseVariant=(variant+2)%4;
+  const bond=RELATION_COMBINATION_BONDS[bondIndex],tension=RELATION_COMBINATION_TENSIONS[tensionIndex];
+  const placeName=place?.name||place?.type||"같은 장소";
+  return {
+    title:`${second.name}와 ${placeName}에서 ${profile.label}`,
+    first:`${bond.actions[variant](first,second)} ${tension.lines[variant](first,second)}`,
+    second:`${bond.actions[reverseVariant](second,first)} ${tension.lines[variant](second,first)}`,
+    relationProfile:profile.key
+  };
+}
 function concreteInteraction(place,first,second,relation,date=new Date()){
   const name=second.name,type=place?.type||"";
+  const combinationScene=relationCombinationScene(place,first,second,relation,date);
+  if(combinationScene)return combinationScene;
   if(!relation){
     const firstExplicit=state.characterViews?.[first.id]?.[second.id]||{};
     const secondExplicit=state.characterViews?.[second.id]?.[first.id]||{};
