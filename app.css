@@ -325,7 +325,7 @@ body,button,input,select,small,b,p,span{word-break:keep-all;overflow-wrap:break-
 .relationship-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .relationship-map{margin:20px 0;padding:18px;overflow:visible;touch-action:pan-y pinch-zoom;border:1px solid var(--line);border-radius:22px;background:#fbfaf7}
 .relationship-map-canvas{position:relative;width:100%;height:auto;aspect-ratio:1/1;overflow:hidden;pointer-events:none;touch-action:pan-y pinch-zoom;border-radius:18px;background:radial-gradient(circle at center,#fff 0 34%,#f4efe7 100%)}
-.relationship-map-canvas svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.relationship-map-canvas svg{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
 .relationship-map-canvas svg text{paint-order:stroke;stroke:#fff;stroke-width:8px;stroke-linejoin:round;fill:#33261f;font-size:17px;font-weight:900}
 .relationship-map-canvas svg .map-emotion{font-size:15px;font-weight:900;fill:#784a37}
 .relationship-map-canvas svg .map-emotion-on-line{stroke-width:10px}
