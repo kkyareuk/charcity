@@ -1,4 +1,4 @@
-﻿import {state,save,characterViewFor} from "./state.js?v=20260805m";
+﻿import {state,save,characterViewFor} from "./state.js?v=20260805n";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -418,6 +418,54 @@ function socialEvent(c,time,date){
   return entry(time,`${p.name} 방문`,food?`오늘은 ${food.name}을 골라 식사하고 있어요.`:drink?`${drink.name}을 마시며 잠깐 쉬고 있어요.`:p.type==="공연장"?"공연을 관람하며 무대에 집중하고 있어요.":"가벼운 외출을 즐기고 있어요.",away(c,{placeId:p.id,itemId:food?.id||drink?.id,mood:"평온"}));
 }
 
+const RELATION_SCENE_PROFILES={
+  친구:{bond:"부담 없이 편을 들어 주는 우정",approach:"격식 없이 먼저 말을 걸고",boundary:"사생활을 캐묻지 않는 선",conflict:"서운한 점은 농담 뒤에 숨기지 않고",memory:"함께 웃었던 사소한 기억"},
+  연인:{bond:"서로 선택한 연인의 애정",approach:"상대의 기분과 취향을 먼저 살피고",boundary:"애정과 소유를 구분하는 선",conflict:"사랑한다는 이유로 문제를 덮지 않고",memory:"둘만 알고 있는 데이트의 기억"},
+  부부:{bond:"생활과 책임을 함께 꾸리는 부부의 유대",approach:"공동 생활의 다음 일을 자연스럽게 나누고",boundary:"각자의 시간과 재산도 존중하는 선",conflict:"쌓아 두기 전에 생활의 문제를 의논하고",memory:"함께 버텨 온 집과 계절의 기억"},
+  "부모·자녀":{bond:"돌봄과 성장으로 이어진 부모자녀의 유대",approach:"대신 결정하기 전에 스스로 말할 기회를 주고",boundary:"나이와 역할이 달라도 인격을 존중하는 선",conflict:"보호와 통제를 혼동하지 않도록 이유를 설명하고",memory:"서로의 성장 과정을 지켜본 기억"},
+  "형제·자매":{bond:"투닥거림 아래 남아 있는 형제자매의 유대",approach:"익숙한 말투로 먼저 건드리면서도",boundary:"물건과 비밀은 허락 없이 넘지 않는 선",conflict:"다른 사람 앞에서는 편을 들고 둘만 남아 잘못을 짚으며",memory:"같은 집에서도 서로 다르게 기억하는 어린 시절"},
+  동거인:{bond:"한집의 질서를 함께 만드는 동거인의 신뢰",approach:"공용 공간에 필요한 일을 먼저 알리고",boundary:"방·물건·손님에 관한 생활 경계",conflict:"사람을 비난하지 않고 바꾸고 싶은 행동을 말하며",memory:"함께 지켜 온 사소한 생활 규칙"},
+  소꿉친구:{bond:"오래된 습관과 현재의 선택이 겹친 우정",approach:"어린 시절부터 알던 버릇을 눈치채고",boundary:"오래 알았다는 이유로 현재의 마음을 단정하지 않는 선",conflict:"옛날 일을 무기처럼 꺼내지 않고",memory:"동네와 학교를 함께 지나온 오래된 기억"},
+  "학창 시절 친구들":{bond:"같은 교실을 지나온 동창의 유대",approach:"그 시절 별명보다 지금의 모습을 먼저 보고",boundary:"과거의 서열과 소문을 되살리지 않는 선",conflict:"기억이 다를 때 한쪽의 경험을 지우지 않고",memory:"수업·시험·축제에 얽힌 학창 시절의 기억"},
+  "친구 모임":{bond:"여러 친구가 함께 만든 모임의 소속감",approach:"대화에서 빠진 사람이 없는지 살피고",boundary:"모임 밖의 사생활을 평가하지 않는 선",conflict:"편을 갈라 몰아붙이지 않고 당사자의 말을 들으며",memory:"모두 함께 웃었던 모임의 기억"},
+  산악회:{bond:"서로의 안전을 맡기는 산행 동료의 신뢰",approach:"날씨와 체력을 먼저 확인하고",boundary:"실력 차이를 자존심 문제로 만들지 않는 선",conflict:"무리한 속도보다 안전한 판단을 우선하며",memory:"같은 길과 정상에서 나눈 기억"},
+  "동아리 동료":{bond:"같은 관심사를 함께 키우는 동아리의 유대",approach:"각자의 아이디어와 역할을 먼저 확인하고",boundary:"취미와 성과를 독점하지 않는 선",conflict:"결과보다 과정의 합의를 다시 맞추며",memory:"함께 준비한 활동과 발표의 기억"},
+  "직장 동료":{bond:"업무를 믿고 이어 맡기는 동료의 신뢰",approach:"진행 상황과 필요한 정보를 정확히 공유하고",boundary:"퇴근 뒤의 사생활과 업무 책임을 구분하는 선",conflict:"사람이 아니라 일정·근거·역할을 기준으로 조정하며",memory:"어려운 업무를 함께 마무리한 기억"},
+  라이벌:{bond:"서로의 성장을 자극하는 경쟁 관계",approach:"상대의 실력을 인정한 뒤 정면으로 도전하고",boundary:"승부 밖의 약점은 이용하지 않는 선",conflict:"결과에 핑계를 대기보다 다음 조건을 분명히 정하며",memory:"간발의 차이로 승패가 갈렸던 기억"},
+  혐관:{bond:"쉽게 가까워질 수 없는 날 선 관계",approach:"필요한 말만 정확히 골라 건네고",boundary:"싫어해도 모욕과 위해는 정당화하지 않는 선",conflict:"감정과 사실을 분리해 반박하며",memory:"서로의 경계를 분명히 알게 된 충돌의 기억"},
+  기타:{bond:"이름 하나로 설명하기 어려운 두 사람만의 연결",approach:"정해진 역할을 강요하지 않고 반응을 살피며",boundary:"둘이 합의한 방식과 금지선을 존중하는 태도",conflict:"관계의 이름보다 실제로 불편했던 행동을 말하며",memory:"두 사람만 의미를 아는 기억"}
+};
+const RELATION_SCENE_SEEDS=[
+  ["아침 안부를 확인하는 중","밤사이 달라진 일과 오늘의 컨디션을 묻고 대답의 속도에 맞춰 이야기를 이어 가고 있어요.","living"],
+  ["함께 먹을 것을 고르는 중","서로 못 먹는 것과 지금 당기는 맛을 확인한 뒤 한 사람의 취향만 따르지 않는 선택을 찾고 있어요.","kitchen"],
+  ["외출 시간을 맞추는 중","목적지와 돌아올 시간을 공유하고 각자 준비할 몫을 나눠 불필요하게 기다리지 않게 하고 있어요.","entry"],
+  ["잊은 물건을 챙겨 주는 중","상대가 두고 간 물건을 발견해 함부로 열어 보지 않고 찾기 쉬운 곳에 보관했다는 연락을 남겼어요.","entry"],
+  ["서로의 하루를 듣는 중","해결책을 서둘러 내놓지 않고 가장 마음에 남은 일이 무엇인지 물으며 끝까지 듣고 있어요.","living"],
+  ["조용히 각자의 일을 하는 중","같은 공간에 있어도 대화를 강요하지 않고 필요할 때만 짧게 말을 건네며 집중을 지켜 주고 있어요.","study"],
+  ["작은 부탁을 조율하는 중","부탁의 이유와 필요한 시간을 설명하고 지금 어렵다면 거절해도 된다는 여지를 분명히 두었어요.","living"],
+  ["예정이 바뀐 일을 알리는 중","갑자기 달라진 계획을 숨기지 않고 먼저 알린 뒤 상대에게 생길 불편을 줄일 방법을 함께 찾고 있어요.","study"],
+  ["좋았던 일을 가장 먼저 전하는 중","자랑처럼 들리지 않게 망설이다가도 함께 기뻐해 줄 얼굴이 떠올라 소식을 꺼내고 있어요.","living"],
+  ["실수한 부분을 인정하는 중","변명으로 책임을 밀어내지 않고 자기가 놓친 부분과 지금 바로 고칠 수 있는 일을 구체적으로 말했어요.","living"],
+  ["서운했던 점을 설명하는 중","상대의 성격을 단정하지 않고 어떤 행동에서 왜 마음이 상했는지를 사건 순서대로 이야기하고 있어요.","living"],
+  ["어색한 침묵을 함께 견디는 중","당장 결론을 재촉하지 않고 각자 감정을 정리할 시간이 필요하다는 것을 받아들이고 곁을 지키고 있어요.","living"],
+  ["필요한 거리를 묻는 중","가까이 있고 싶은 마음보다 상대가 지금 혼자 쉬고 싶은지를 먼저 확인하고 대답을 존중했어요.","bedroom"],
+  ["공동의 문제를 정리하는 중","누가 더 옳은지 겨루기보다 지금 해결해야 할 일과 나중에 이야기할 감정을 따로 나누고 있어요.","study"],
+  ["서로 다른 기억을 맞춰 보는 중","자기 기억만 사실이라고 밀어붙이지 않고 같은 사건을 각자 어떻게 겪었는지 차례로 말하고 있어요.","living"],
+  ["다른 사람 앞에서 선을 지키는 중","둘 사이의 사적인 이야기와 약속을 허락 없이 공개하지 않고 필요한 설명만 짧게 전했어요.","living"],
+  ["위험한 선택을 말리는 중","겁을 주거나 명령하기보다 예상되는 위험과 가능한 대안을 설명하고 최종 선택을 함께 확인하고 있어요.","entry"],
+  ["작은 성취를 알아봐 주는 중","결과만 칭찬하지 않고 상대가 오래 애쓴 과정과 전보다 달라진 부분을 정확히 짚어 주었어요.","study"],
+  ["다음 약속을 정하는 중","막연히 나중에 보자고 넘기지 않고 둘 다 지킬 수 있는 시간과 변경할 때의 연락 방법을 정했어요.","living"],
+  ["하루를 마무리하며 상태를 살피는 중","오늘 못다 한 말을 억지로 끌어내지 않고 쉬기 전에 필요한 것이 있는지만 확인하고 인사를 건넸어요.","bedroom"]
+];
+function expandedRelationScripts(type,n){
+  const profile=RELATION_SCENE_PROFILES[type]||RELATION_SCENE_PROFILES.기타;
+  return RELATION_SCENE_SEEDS.map(([title,detail,room],index)=>{
+    const shared=`${profile.approach} ${profile.boundary}을 지키고 있어요. ${index%4===0?profile.bond:index%4===1?profile.conflict:index%4===2?profile.memory:"지금 상대가 보이는 반응"}을 가볍게 넘기지 않았어요.`;
+    const reciprocal=index%3===0?`상대가 보여 준 ${profile.bond}을 당연하게 여기지 않고 자기 방식으로 응답했어요.`:index%3===1?`${profile.conflict} 둘이 받아들일 수 있는 다음 행동을 정했어요.`:`${profile.memory}을 떠올리면서도 지금 달라진 모습과 선택을 존중했어요.`;
+    return [[`${n}와 ${title}`,`${detail} ${shared}`,room],[`${n}와 ${title.replace("확인하는","나누는").replace("고르는","맞추는")}`,`${detail} ${reciprocal}`,room]];
+  });
+}
+
 function relationSpecificEntry(c,other,r,time,date,role){
   if(r.type==="짝사랑"&&r.directional)role=c.id===r.admirerId?0:1;
   if(r.type==="부모·자녀"&&r.directional)role=c.id===r.parentId?0:1;
@@ -483,6 +531,7 @@ function relationSpecificEntry(c,other,r,time,date,role){
       [[`${n}와 날 선 대화를 나누는 중`,"상대의 말에서 모순을 짚어 내며 물러서지 않지만 넘지 말아야 할 선은 간신히 지키고 있어요.","living"],[`${n}의 지적에 반박하는 중`,"바로 표정을 굳히고 근거부터 다시 대라며 차갑게 맞받아치고 있어요.","living"]]
     ]
   };
+  for(const type of Object.keys(RELATION_SCENE_PROFILES))pools[type]=[...(pools[type]||[]),...expandedRelationScripts(type,n)];
   const unaware=r.type==="짝사랑"&&/무자각|자기 감정을 모르는|호감이라고만|자꾸 신경/.test(r.stage||"");
   if(unaware){
     const introverted=/수줍|내향|혼자|아싸|사람이 싫/.test(c.socialStyle||"");
@@ -1062,7 +1111,7 @@ function build(c,date=new Date()){
   return list.map(item=>medievalize(c,item,date)).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260805m";
+const ENGINE_VERSION="20260805n";
 // 코드 업데이트는 이미 저장된 생활을 바꾸지 않습니다.
 // 캐릭터·관계·일정처럼 사용자가 직접 바꾼 설정만 새 장면 계산에 반영합니다.
 function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
