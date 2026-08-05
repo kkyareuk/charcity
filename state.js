@@ -586,7 +586,7 @@ export function characterViewFor(sourceId,targetId){
   const relations=Object.values(state.relationships||{}).filter(item=>
     (item.a===sourceId&&item.b===targetId)||(item.a===targetId&&item.b===sourceId)
   );
-  let defaults={overall:"낯선 사람으로 여김",awareness:"자기 감정을 분명히 자각함",trust:"조심스럽게 지켜봄",closeness:"낯선 사이",comfort:"조심스러움",annoyance:"전혀 귀찮지 않음",attention:"관심 없음",jealousy:"질투하지 않음"};
+  let defaults={overall:"낯선 사람으로 여김",awareness:"자기 감정을 분명히 자각함",trust:"조심스럽게 지켜봄",closeness:"낯선 사이",comfort:"조심스러움",annoyance:"전혀 귀찮지 않음",attention:"관심 없음",jealousy:"질투하지 않음",conflictIntensity:"갈등이 거의 없음",expectation:"정하지 않음",spaceComfort:"상대 공간에서는 조금 어색함",rapport:"무난하게 대화함",aggression:"공격 충동 없음"};
   if(relations.length){
     if(relations.some(relation=>["연인","부부"].includes(relation.type)))defaults={...defaults,overall:"좋아함",trust:"어느 정도 믿음",closeness:"가까운 사이",comfort:"편안함",attention:"종종 신경 씀"};
     else if(relations.some(relation=>["혐관","원수"].includes(relation.type)||/원수|이별 통보|이혼 서류/.test(relation.stage||"")))defaults={...defaults,overall:"매우 싫어함",trust:"전혀 믿지 않음",closeness:"거리감 있음",comfort:"매우 불편함",annoyance:"보기만 해도 피곤함"};
