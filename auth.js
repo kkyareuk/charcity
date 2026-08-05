@@ -9,9 +9,12 @@ const status=text=>window.ParallelCity?.setAccountStatus(text);
 const clone=value=>JSON.parse(JSON.stringify(value));
 const isData=value=>typeof value==="string"&&value.startsWith("data:");
 let auth,db,storage,user,busy=false;
-let entitlements={backgroundPacks:[],iconPacks:[],dlcPacks:[],purchases:[],characterSlotPacks:0,townSlotPacks:0,storage50:false};
+let entitlements={backgroundPacks:[],iconPacks:[],dlcPacks:[],purchases:[],characterSlotPacks:0,townSlotPacks:0,storage50:false,teaSupportMonth:""};
 let guideState={loaded:!ready,seen:[]};
 let autoLoadStarted=false;
+const REFRESH_GUARD_MS=30*60*1000;
+const sessionStamp=key=>Number(localStorage.getItem(key)||0);
+const stampSession=key=>localStorage.setItem(key,String(Date.now()));
 const uploadedCache=new Map();
 const MAX_PHOTOS=120;
 const FREE_TOTAL_BYTES=20*1024*1024;
@@ -51,6 +54,8 @@ function shortError(error){
   if(code.includes("permission-denied")||code.includes("unauthorized"))return "저장 권한 확인 필요";
   if(code.includes("bucket-not-found")||code.includes("object-not-found"))return "사진 저장소 확인 필요";
   if(code.includes("quota"))return "Storage 용량 초과 · Firebase 요금제와 저장 파일을 확인해 주세요";
+  if(code.includes("unauthenticated")||code.includes("billing")||code.includes("payment-required"))return "Firebase Storage는 Blaze 요금제 연결이 필요해요";
+  if(code.includes("unknown")||code.includes("retry-limit"))return "Storage 접근 실패 · Blaze 요금제와 버킷 설정을 확인해 주세요";
   if(code.includes("photo-limit"))return `사진은 계정당 최대 ${MAX_PHOTOS}장까지 저장할 수 있어요`;
   if(code.includes("total-size-limit"))return `사진 저장 용량은 현재 총 ${Math.round(maxTotalBytes()/1048576)}MB까지예요`;
   if(code.includes("image-too-large"))return "압축된 사진 한 장은 1.5MB 이하여야 해요";
@@ -61,6 +66,8 @@ function shortError(error){
 const cloudDoc=()=>doc(db,"users",user.uid);
 async function registerSignedInUser(){
   if(!user)return;
+  const guardKey=`drawer-village-login-write-${user.uid}`;
+  if(Date.now()-sessionStamp(guardKey)<REFRESH_GUARD_MS)return;
   const reference=cloudDoc();
   const snapshot=await getDoc(reference);
   const profile={
@@ -80,6 +87,7 @@ async function registerSignedInUser(){
   };
   if(!snapshot.exists())presence.createdAt=serverTimestamp();
   await setDoc(reference,presence,{merge:true});
+  stampSession(guardKey);
 }
 const normalizeEntitlements=value=>{
   const purchases=Array.isArray(value?.purchases)?value.purchases.filter(x=>typeof x==="string"):[];
@@ -91,6 +99,7 @@ const normalizeEntitlements=value=>{
     characterSlotPacks:Math.max(0,Number(value?.characterSlotPacks)||purchases.filter(x=>x==="character_slots_5").length),
     townSlotPacks:Math.max(0,Number(value?.townSlotPacks)||purchases.filter(x=>x==="town_slot_1").length),
     storage50:Boolean(value?.storage50||purchases.includes("storage_50mb")),
+    teaSupportMonth:typeof value?.teaSupportMonth==="string"?value.teaSupportMonth:"",
     grantedBy:typeof value?.grantedBy==="string"?value.grantedBy:"",
     note:typeof value?.note==="string"?value.note:""
   };
@@ -137,13 +146,6 @@ async function uploadDataUrl(dataUrl,manifest){
   if(usedBytes+blob.size>maxTotalBytes())throw Object.assign(new Error("total-size-limit"),{code:"storage/total-size-limit"});
   const ext=blob.type==="image/png"?"png":"webp";
   const target=ref(storage,`users/${user.uid}/media/${hash}.${ext}`);
-  try{
-    const existing=await Promise.race([getDownloadURL(target),new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("storage-timeout"),{code:"storage/timeout"})),8000))]);
-    manifest.items.push({hash,size:blob.size,url:existing});
-    uploadedCache.set(dataUrl,existing);return existing;
-  }catch(error){
-    if(String(error?.code||"").includes("timeout"))throw error;
-  }
   await Promise.race([uploadBytes(target,blob,{contentType:blob.type||"image/webp",cacheControl:"public,max-age=31536000,immutable"}),new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("storage-timeout"),{code:"storage/timeout"})),25000))]);
   const url=await Promise.race([getDownloadURL(target),new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("storage-timeout"),{code:"storage/timeout"})),8000))]);
   manifest.items.push({hash,size:blob.size,url});
@@ -226,7 +228,8 @@ async function download({automatic=false}={}){
     window.dispatchEvent(new Event("drawer-village-cloud-loaded"));
     status(`${user.displayName||"계정"} · ${accessLabel()} · 불러오기 완료`);
     toast(automatic?"자동으로 불러왔습니다":"불러왔습니다");
-  }catch(error){console.error(error);status(`불러오기 실패 · ${shortError(error)}`);if(!automatic)toast(`불러오기 실패 · ${shortError(error)}`)}finally{busy=false}
+    return true;
+  }catch(error){console.error(error);status(`불러오기 실패 · ${shortError(error)}`);if(!automatic)toast(`불러오기 실패 · ${shortError(error)}`);return false}finally{busy=false}
 }
 
 async function submitFeedback({category,message,allowReply=false}={}){
@@ -259,7 +262,12 @@ if(ready){
       if(user){
         try{await registerSignedInUser()}
         catch(error){console.error(error);status(`${user.displayName||"Google 계정"} · 사용자 등록 실패 · ${shortError(error)}`)}
-        if(!autoLoadStarted){autoLoadStarted=true;download({automatic:true})}
+        const loadKey=`drawer-village-auto-load-${user.uid}`;
+        if(!autoLoadStarted&&Date.now()-sessionStamp(loadKey)>=REFRESH_GUARD_MS){
+          autoLoadStarted=true;
+          const loaded=await download({automatic:true});
+          if(loaded!==false)stampSession(loadKey);
+        }
       }
     });
   }catch(error){status(`로그인 초기화 실패 · ${shortError(error)}`)}
