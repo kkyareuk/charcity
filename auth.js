@@ -1,5 +1,5 @@
 ﻿import {initializeApp} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import {getAuth,GoogleAuthProvider,setPersistence,browserLocalPersistence,onAuthStateChanged,signInWithPopup,signInWithRedirect,getRedirectResult,signOut} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import {getAuth,GoogleAuthProvider,setPersistence,browserLocalPersistence,onAuthStateChanged,signInWithPopup,signInWithRedirect,getRedirectResult,signInWithCredential,signOut} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 import {getFirestore,doc,getDoc,setDoc,serverTimestamp,arrayUnion} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 import {getStorage,ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
 
@@ -179,6 +179,12 @@ async function login(){
   if(!ready){alert("config.js의 Firebase 웹 앱 설정을 확인해 주세요.");return}
   const provider=new GoogleAuthProvider();
   provider.setCustomParameters({prompt:"select_account"});
+  if(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.Plugins?.FirebaseAuthentication){
+    const result=await window.Capacitor.Plugins.FirebaseAuthentication.signInWithGoogle();
+    const credential=GoogleAuthProvider.credential(result.credential?.idToken,result.credential?.accessToken);
+    await signInWithCredential(auth,credential);
+    return;
+  }
   try{await signInWithPopup(auth,provider)}catch(error){
     if(["auth/popup-blocked","auth/operation-not-supported-in-this-environment","auth/cancelled-popup-request"].includes(error.code))await signInWithRedirect(auth,provider);
     else alert(`로그인 실패: ${error.message||error.code}`);
