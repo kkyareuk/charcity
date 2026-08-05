@@ -1,5 +1,5 @@
-﻿import {state,active,characterViewFor} from "./state.js?v=20260806ao";
-import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806ao";
+import {state,active,characterViewFor} from "./state.js?v=20260806ap";
+import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806ap";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const JOBS=["무직","학생","회사원","CEO","의사","간호사","교사","교수","정치인","기자","요리사","프로그래머","연구원","예술가","해적","군인","범죄자","환경미화원","여관주인","자영업·직접 입력"];
@@ -339,15 +339,14 @@ function homeCard(id,chars){
     const roomPets=pets.filter(p=>petScenes[p.id]?.roomKey===key);
     const shownPeople=roomPeople,shownPets=roomPets;
     const furniture=FURNITURE[room.type||key]||FURNITURE.other;
-    return `<div class="room ${roomClasses[key]||"custom-room"}" ${roomStyle(h,key)}>
-      ${edit?`<input class="room-name" data-room-name="${key}" data-home-id="${id}" value="${esc(room.name||key)}">`:`<b>${esc(room.name||key)}</b>`}
-      ${edit?`<div class="room-tools"><button data-room-bg="${id}" data-home-id="${id}" data-room="${key}">사진</button><button data-image-url="room" data-id="${id}" data-room="${key}">링크</button>${room.image?`<button data-clear-room-bg data-home-id="${id}" data-room="${key}">지우기</button>`:""}</div>`:""}
-      ${edit?`<div class="furniture">${furniture.map(item=>`<button data-furniture="${item}" data-home-id="${id}" data-room="${key}" class="${(room.furniture||[]).includes(item)?"on":""}">${item}</button>`).join("")}</div>`:""}
+    return `<div class="room ${roomClasses[key]||"custom-room"} ${edit?"room-edit-target":""}" ${roomStyle(h,key)} ${edit?`data-open-room-editor="${key}" data-home-id="${id}" tabindex="0" role="button" aria-label="${esc(room.name||key)} 편집`:""}>
+      <b>${esc(room.name||key)}</b>
+      ${edit&&!room.image?`<button type="button" class="room-empty-image" data-open-room-image-menu="${key}" data-home-id="${id}"><span>＋</span>사진 추가하기</button>`:""}
+      ${edit?`<span class="room-edit-hint">눌러서 편집</span>`:""}
       <div class="room-people">${shownPeople.map(c=>{const e=sceneFor(c);return `<button class="home-person" data-home-person="${c.id}">${avatar(c)}<span><b>${esc(c.name)}</b><small>${esc(e?.title||"집에서 시간을 보내는 중")}</small></span></button>`}).join("")}</div>
       <div class="room-pets">${shownPets.map(p=>`<button class="room-pet" title="${esc(petScenes[p.id].desc)}">${p.icon?`<img class="room-pet-icon" src="${esc(p.icon)}" alt="">`:p.photo?`<img class="room-pet-photo" src="${esc(p.photo)}" alt="">`:`<span class="room-pet-emoji">${petEmoji[p.species]||"🐾"}</span>`}<span class="room-pet-status"><b>${esc(p.name)}</b><small>${esc(petScenes[p.id].title.replace(`${h.rooms?.[key]?.name||"집 안"}에서 `,""))}</small></span></button>`).join("")}</div>
     </div>`;
   }).join("");
-  const mobileRoomEditors=edit?`<section class="mobile-room-editors"><div class="room-editor-guide"><h3>방 사진과 가구 꾸미기</h3><p>방 유형을 고르면 그 공간에 어울리는 가구로 한 번에 바뀌어요. 필요 없는 방은 각 편집창 위에서 삭제할 수 있어요.</p></div>${roomKeys.map(key=>{const room=h.rooms?.[key]||{},furniture=FURNITURE[room.type||key]||FURNITURE.other;return `<details><summary><span class="room-editor-thumb" ${room.image?`style="background-image:url('${esc(room.image)}')"`:""}></span><span><b>${esc(room.name||key)}</b><small>${esc(ROOM_TYPES[room.type||key]||"기타 방")} · ${room.image?"사진 등록됨":"사진 없음"}</small></span></summary><div class="mobile-room-editor-body"><div class="room-editor-heading"><b>${esc(room.name||key)} 편집</b><button class="danger" data-delete-room="${key}" data-home-id="${id}">방 삭제</button></div><label>방 유형<select data-room-type="${key}" data-home-id="${id}">${roomTypeOptions(room)}</select></label><label>방 이름<input data-room-name="${key}" data-home-id="${id}" value="${esc(room.name||key)}"></label><div class="mobile-room-image-actions"><button class="primary" data-room-bg="${id}" data-home-id="${id}" data-room="${key}">내 사진에서 선택</button><button data-image-url="room" data-id="${id}" data-room="${key}">이미지 주소로 넣기</button>${room.image?`<button data-clear-room-bg data-home-id="${id}" data-room="${key}">현재 사진 지우기</button>`:""}</div><div><b>이 방에 있는 가구</b><p class="room-editor-note">방 유형을 바꾸면 추천 가구로 갱신돼요. 버튼으로 가구를 더하거나 뺄 수 있어요.</p></div><div class="mobile-room-furniture">${furniture.map(item=>`<button data-furniture="${item}" data-home-id="${id}" data-room="${key}" class="${(room.furniture||[]).includes(item)?"on":""}">${item}</button>`).join("")}</div></div></details>`}).join("")}</section>`:"";
   const residentEditor=edit?`<section class="resident-editor"><h3>함께 사는 캐릭터</h3><div>${state.order.map(cid=>{const c=state.characters[cid],on=c.homeId===id;return `<div class="resident-setting"><button data-home-resident="${cid}" data-home-id="${id}" class="${on?"on":""}">${avatar(c)} ${esc(c.name)}</button></div>`}).join("")}</div><small>거주 마을은 캐릭터 프로필에서 설정해요. 취향과 성격은 동거인끼리 섞이지 않습니다.</small></section>`:"";
   const sleepEditor=edit?`<section class="sleep-room-editor"><div class="title"><h3>자는 방 배정</h3><button data-add-room>+ 방 추가</button></div>${chars.map(c=>`<label>${esc(c.name)}<select data-sleep-room="${c.id}">${roomKeys.map(key=>`<option value="${key}" ${(c.sleepRoomId||"bedroom")===key?"selected":""}>${esc(h.rooms[key]?.name||key)}</option>`).join("")}</select></label>`).join("")}</section>`:"";
   const status=chars.map(c=>{const e=eventFor(c);return `<button class="home-status" data-home-person="${c.id}" style="--own:${c.theme.primary}">${avatar(c)}<span><b>${esc(c.name)}</b><small>${esc(e.title)}</small><em>${esc(e.desc||"")}</em></span></button>`}).join("");
@@ -370,7 +369,7 @@ function homeCard(id,chars){
     <div class="title"><div>${edit?`<input class="home-name" data-home-name data-home-id="${id}" value="${esc(h.name)}">`:`<h2>🏠 ${esc(h.name)}</h2>`}<small>${chars.map(c=>c.name).join(" · ")} 거주 중</small></div><b>${inside.length}명 귀가</b></div>
     ${edit?`<div class="home-photo-editor"><b>집 선택 버튼 배경 사진</b><span><button data-home-bg="${id}">사진</button><button data-image-url="home" data-id="${id}">링크</button>${h.image?`<button data-clear-home-bg="${id}">지우기</button>`:""}</span></div>`:""}
     ${residentEditor}${sleepEditor}<div class="clean">청결도 · ${Math.round(h.cleanliness??100)}% <i style="width:${h.cleanliness??100}%"></i></div>
-    <div class="rooms ${roomKeys.length>6?"has-extra":""}">${roomHtml}</div>${mobileRoomEditors}
+    <div class="rooms ${roomKeys.length>6?"has-extra":""}">${roomHtml}</div>
     <section class="pets"><div class="title"><h2>함께 사는 존재</h2>${edit?`<button data-add-pet>+ 함께 사는 존재 추가</button>`:""}</div><div class="pet-grid">${petCards||"<p>아직 함께 사는 존재가 없어요.</p>"}</div></section>
     <section class="cars"><div class="title"><h2>자동차</h2>${edit?`<button data-add-car>+ 자동차 추가</button>`:""}</div><div class="car-grid">${cars||"<p>등록된 자동차가 없어요.</p>"}</div><small>운전면허가 있는 구성원만 운전하며, 음주한 날에는 자동차를 이용하지 않아요.</small></section>
     <section class="resident-scenes"><div class="title"><h2>동거인 현재 장면</h2></div><div>${residentScenes}</div></section>
