@@ -239,6 +239,21 @@ async function download({automatic=false}={}){
       return;
     }
     const localState=window.ParallelCity.getState();
+    const characterIds=value=>new Set(Array.isArray(value?.order)?value.order:Object.keys(value?.characters||{}));
+    const localIds=characterIds(localState),remoteIds=characterIds(remote);
+    const differentCharacters=localIds.size>0&&remoteIds.size>0&&(localIds.size!==remoteIds.size||[...localIds].some(id=>!remoteIds.has(id)));
+    if(differentCharacters){
+      if(automatic){
+        status(`${user.displayName||"계정"} · 기기와 클라우드 인물 구성이 달라 자동 불러오기 중지`);
+        toast("인물 구성이 달라 자동 동기화를 멈췄어요 · 설정에서 어느 데이터를 쓸지 선택해 주세요");
+        return false;
+      }
+      if(!confirm(`현재 기기에는 ${localCount}명, 클라우드에는 ${remoteCount}명이 있어요.\n\n클라우드 데이터로 기기의 마을 전체를 교체할까요?\n취소하면 현재 기기 데이터를 그대로 유지합니다.`)){
+        status(`${user.displayName||"계정"} · 기기 데이터 유지`);
+        toast("기기의 캐릭터 데이터를 유지했습니다");
+        return false;
+      }
+    }
     if(automatic&&Number(localState?.lastSaved||0)>Number(remote?.lastSaved||0)){
       status(`${user.displayName||"계정"} · 더 최신인 기기 데이터 유지`);
       toast("기기의 최신 변경사항을 유지했습니다");

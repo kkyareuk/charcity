@@ -1,7 +1,7 @@
-﻿import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806ao";
-import {eventFor} from "./simulation.js?v=20260806ao";
-import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806ao";
-import {recordCharacterInteraction} from "./state.js?v=20260806ao";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806aq";
+import {eventFor} from "./simulation.js?v=20260806aq";
+import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806aq";
+import {recordCharacterInteraction} from "./state.js?v=20260806aq";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -392,6 +392,95 @@ const updateCar=(homeId,id,patch)=>{const car=state.homes[homeId]?.cars?.find(it
 const deleteCar=(homeId,id)=>{const home=state.homes[homeId];if(home){home.cars=(home.cars||[]).filter(item=>item.id!==id);save(true)}};
 const maintenanceConfig=()=>window.PARALLEL_CITY_CONFIG?.maintenance||{};
 const maintenanceEnabled=()=>Boolean(maintenanceConfig().enabled);
+const ONBOARDING_KEY="drawer-village-onboarding-v1";
+const SETUP_COACH_KEY="drawer-village-first-setup-v1";
+const ROOM_EDITOR_TYPES={living:"거실",kitchen:"주방",entry:"현관",bath:"욕실",bedroom:"침실",study:"서재·취미방",dining:"다이닝룸",nursery:"아이방",guest:"손님방",hobby:"취미방",balcony:"베란다",storage:"창고",other:"기타 방"};
+const ROOM_EDITOR_FURNITURE={
+  living:["소파","TV","책장","오디오","안마의자","게임기","캣타워"],kitchen:["냉장고","조리대","식탁","오븐","커피머신","식기세척기"],
+  entry:["신발장","전신거울","우산꽂이","반려동물 산책용품"],bath:["샤워부스","욕조","세면대","세탁기","건조기"],
+  bedroom:["침대","옷장","화장대","협탁","빔프로젝터"],study:["책상","컴퓨터","피아노","기타","그림 도구","재봉틀","운동기구"],
+  dining:["식탁","의자","찬장","티 테이블","와인장"],nursery:["아기 침대","수납장","놀이 매트","책장","기저귀 교환대"],
+  guest:["침대","협탁","옷걸이","작은 책상","전신거울"],hobby:["작업대","수납장","그림 도구","재봉틀","악기","운동기구"],
+  balcony:["화분","야외 의자","작은 테이블","빨래 건조대"],storage:["수납장","선반","보관 상자","옷걸이"],other:["수납장","의자","작은 테이블"]
+};
+const roomIllustration=(type="other",index=0)=>{
+  const palettes={
+    living:[["#e8d6bf","#a5785d"],["#d7e6df","#5b8476"]],kitchen:[["#e8e4da","#8c9a91"],["#f2dfc5","#b9825e"]],
+    bedroom:[["#d9d6e8","#716b8d"],["#ead8dc","#a8707b"]],bath:[["#dceaf0","#6e9cac"],["#e3e6df","#779080"]],
+    study:[["#dfd3c3","#76634f"],["#d9e1dc","#526f62"]],entry:[["#e6dfd8","#807064"],["#dce1e6","#65798a"]],
+    other:[["#e3ded7","#7d7166"],["#d9e4df","#5d7a6e"]]
+  };
+  const [light,dark]=(palettes[type]||palettes.other)[index%2];
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="${light}"/><stop offset="1" stop-color="${dark}"/></linearGradient></defs><rect width="800" height="520" fill="url(#g)"/><rect y="360" width="800" height="160" fill="${dark}" opacity=".25"/><rect x="90" y="100" width="260" height="180" rx="12" fill="#fff" opacity=".42"/><path d="M110 120h220v140H110zM220 120v140M110 190h220" fill="none" stroke="${dark}" stroke-width="12" opacity=".55"/><rect x="430" y="285" width="250" height="95" rx="35" fill="#fff" opacity=".6"/><rect x="465" y="245" width="180" height="75" rx="28" fill="#fff" opacity=".52"/><circle cx="390" cy="405" r="42" fill="#fff" opacity=".42"/><rect x="350" y="400" width="80" height="16" rx="8" fill="${dark}" opacity=".45"/></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+function openRoomImageMenu(homeId,roomKey){
+  const room=state.homes[homeId]?.rooms?.[roomKey];if(!room)return;
+  const dialog=document.createElement("dialog");dialog.className="room-image-dialog";
+  dialog.innerHTML=`<form method="dialog"><div class="title"><div><small>${room.name||"방"}</small><h2>어떤 사진을 넣을까요?</h2></div><button value="close" aria-label="닫기">×</button></div><div class="room-image-choice"><button type="button" data-room-illustrations>🎨<b>일러스트 고르기</b><small>앱에 준비된 배경</small></button><button type="button" data-room-file>🖼️<b>이미지 첨부하기</b><small>내 기기에서 선택</small></button><button type="button" data-room-link>🔗<b>링크 추가하기</b><small>공개 이미지 주소</small></button></div></form>`;
+  dialog.querySelector("[data-room-illustrations]").onclick=()=>{dialog.close();openRoomIllustrations(homeId,roomKey)};
+  dialog.querySelector("[data-room-file]").onclick=()=>{dialog.close();pickImage("room",homeId,roomKey)};
+  dialog.querySelector("[data-room-link]").onclick=async()=>{dialog.close();await useImageUrl("room",homeId,roomKey)};
+  dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();
+}
+function openRoomIllustrations(homeId,roomKey){
+  const room=state.homes[homeId]?.rooms?.[roomKey];if(!room)return;
+  const dialog=document.createElement("dialog");dialog.className="room-illustration-dialog";
+  dialog.innerHTML=`<form method="dialog"><div class="title"><h2>방 일러스트 고르기</h2><button value="close">×</button></div><div class="room-illustration-grid">${[0,1].map(index=>`<button type="button" data-room-illustration="${index}" style="background-image:url('${roomIllustration(room.type,index)}')"><span>${index?"차분한 분위기":"포근한 분위기"}</span></button>`).join("")}</div></form>`;
+  dialog.querySelectorAll("[data-room-illustration]").forEach(button=>button.onclick=()=>{setHomeImage(homeId,roomKey,roomIllustration(room.type,Number(button.dataset.roomIllustration)));dialog.close();render()});
+  dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();
+}
+function openRoomEditor(homeId,roomKey){
+  const room=state.homes[homeId]?.rooms?.[roomKey];if(!room)return;
+  const dialog=document.createElement("dialog");dialog.className="room-editor-dialog";
+  const drawFurniture=()=>{const list=ROOM_EDITOR_FURNITURE[room.type]||ROOM_EDITOR_FURNITURE.other;return list.map(item=>`<button type="button" data-room-furniture="${item}" class="${(room.furniture||[]).includes(item)?"on":""}">${item}</button>`).join("")};
+  dialog.innerHTML=`<form method="dialog"><div class="title"><div><small>방 편집</small><h2>${room.name||"방"}</h2></div><button value="close">×</button></div><div class="room-editor-fields"><label>방 이름<input name="name" value="${String(room.name||"방").replace(/"/g,"&quot;")}"></label><label>방 유형<select name="type">${Object.entries(ROOM_EDITOR_TYPES).map(([value,label])=>`<option value="${value}" ${room.type===value?"selected":""}>${label}</option>`).join("")}</select></label></div><button type="button" class="room-editor-photo" data-edit-room-photo>${room.image?`<span style="background-image:url('${room.image}')"></span><b>방 사진 변경</b>`:"<span>＋</span><b>방 사진 추가하기</b>"}</button><div><b>이 방에 있는 가구</b><p class="room-editor-note">장면에 실제로 등장할 수 있는 가구만 선택해 주세요.</p><div class="room-editor-furniture">${drawFurniture()}</div></div><div class="crop-actions"><button type="button" class="danger" data-room-delete>방 삭제</button><button class="primary" value="save">완료</button></div></form>`;
+  const sync=()=>{updateRoom(homeId,roomKey,{name:dialog.querySelector('[name="name"]').value.trim()||"방"});const nextType=dialog.querySelector('[name="type"]').value;if(nextType!==room.type)setRoomType(homeId,roomKey,nextType)};
+  dialog.querySelector('[name="type"]').onchange=()=>{sync();dialog.close();openRoomEditor(homeId,roomKey)};
+  dialog.querySelector("[data-edit-room-photo]").onclick=()=>{sync();dialog.close();openRoomImageMenu(homeId,roomKey)};
+  dialog.querySelectorAll("[data-room-furniture]").forEach(button=>button.onclick=()=>{toggleFurniture(homeId,roomKey,button.dataset.roomFurniture);button.classList.toggle("on")});
+  dialog.querySelector("[data-room-delete]").onclick=()=>{if(confirm(`${room.name||"이 방"}을 삭제할까요?`)){deleteRoom(homeId,roomKey);dialog.close();explicitSave("방 삭제")}};
+  dialog.onclose=()=>{if(dialog.returnValue==="save"){sync();save(true);render()}dialog.remove()};
+  document.body.append(dialog);dialog.showModal();
+}
+
+function showOnboarding(){
+  if(state.order.length||localStorage.getItem(ONBOARDING_KEY)==="done"||document.querySelector(".onboarding-dialog"))return;
+  let step=0,userName=localStorage.getItem("drawer-village-user-name")||"";
+  const dialog=document.createElement("dialog");dialog.className="onboarding-dialog";
+  const pages=[
+    ()=>`<small>WELCOME TO DRAWER VILLAGE</small><h1>서랍마을에 오신 것을 환영해요</h1><p>이곳은 당신의 서랍 안에 있는 작은 마을이에요.<br>캐릭터들은 각자의 집과 일상, 관계를 가지고 살아갑니다.</p><button class="primary" type="button" data-onboarding-next>마을 둘러보기</button>`,
+    ()=>`<small>STEP 1 · 마을의 주인</small><h1>당신의 이름은 무엇인가요?</h1><p>마을 안내에서 불러드릴 이름이에요. 언제든 다시 바꿀 수 있어요.</p><label class="onboarding-name">이름<input name="userName" value="${userName.replace(/"/g,"&quot;")}" maxlength="20" placeholder="이름 또는 별명"></label><button class="primary" type="button" data-onboarding-next>다음</button>`,
+    ()=>`<small>STEP 2 · 계정</small><h1>${userName||"마을 주인"}님의 기록을 보관할까요?</h1><p>Google 계정을 연결하면 사이트와 앱에서 같은 마을을 불러올 수 있어요. 지금은 건너뛰어도 괜찮아요.</p><div class="onboarding-actions"><button type="button" data-onboarding-login>Google 계정 연결</button><button class="primary" type="button" data-onboarding-next>나중에 연결하기</button></div>`,
+    ()=>`<small>STEP 3 · 첫 주민</small><h1>첫 번째 캐릭터를 추가해 볼까요?</h1><p>먼저 기본 프로필만 만들어요. 캐릭터를 만든 다음 집과 마을을 차근차근 꾸밀 수 있어요.</p><button class="primary" type="button" data-onboarding-create>첫 캐릭터 만들기</button>`
+  ];
+  const paint=()=>{
+    dialog.innerHTML=`<form method="dialog"><div class="onboarding-progress">${pages.map((_,index)=>`<i class="${index<=step?"on":""}"></i>`).join("")}</div><section>${pages[step]()}</section>${step?`<button type="button" class="onboarding-back" data-onboarding-back>← 이전</button>`:""}</form>`;
+    dialog.querySelector("[data-onboarding-back]")?.addEventListener("click",()=>{step=Math.max(0,step-1);paint()});
+    dialog.querySelector("[data-onboarding-next]")?.addEventListener("click",()=>{
+      const input=dialog.querySelector('[name="userName"]');if(input){if(!input.value.trim()){input.focus();return}userName=input.value.trim();localStorage.setItem("drawer-village-user-name",userName)}
+      step=Math.min(pages.length-1,step+1);paint();
+    });
+    dialog.querySelector("[data-onboarding-login]")?.addEventListener("click",async()=>{const auth=window.ParallelCityAuth;if(!auth)return showToast("로그인 기능을 불러오는 중이에요");await auth.login();step=3;paint()});
+    dialog.querySelector("[data-onboarding-create]")?.addEventListener("click",()=>{if(createCharacter(characterLimit())){localStorage.setItem(ONBOARDING_KEY,"done");localStorage.setItem(SETUP_COACH_KEY,"home");dialog.close();state.activeTab="character";setCharacterPane("profile");save();render();showToast("첫 캐릭터의 이름부터 정해 볼까요?")}});
+  };
+  dialog.onclose=()=>dialog.remove();document.body.append(dialog);paint();dialog.showModal();
+}
+function showSetupCoach(){
+  const step=localStorage.getItem(SETUP_COACH_KEY);
+  if(!state.order.length||!["home","town"].includes(step)||document.querySelector("dialog[open]"))return;
+  const dialog=document.createElement("dialog");dialog.className="setup-coach-dialog";
+  if(step==="home"){
+    dialog.innerHTML=`<form method="dialog"><small>첫 번째 꾸미기</small><h2>캐릭터가 살 집을 꾸며볼까요?</h2><p>방을 눌러 이름과 가구, 사진을 정할 수 있어요. 아직 준비되지 않았다면 나중에 해도 괜찮아요.</p><div><button value="later">나중에</button><button type="button" class="primary" data-start-home-setup>집 편집 시작</button></div></form>`;
+    dialog.querySelector("[data-start-home-setup]").onclick=()=>{localStorage.setItem(SETUP_COACH_KEY,"home-editing");state.activeTab="home";setActiveHome(active()?.homeId||state.activeHomeId);setHomeEditMode(true);dialog.close();render()};
+  }else{
+    dialog.innerHTML=`<form method="dialog"><small>두 번째 꾸미기</small><h2>이제 마을도 둘러볼까요?</h2><p>건물 이름과 종류, 사진을 바꾸면 캐릭터들의 생활 장소도 함께 달라져요.</p><div><button value="later">나중에</button><button type="button" class="primary" data-start-town-setup>마을 편집 보기</button></div></form>`;
+    dialog.querySelector("[data-start-town-setup]").onclick=()=>{localStorage.setItem(SETUP_COACH_KEY,"done");state.activeTab="town";dialog.close();render()};
+  }
+  dialog.onclose=()=>{if(dialog.returnValue==="later")localStorage.setItem(SETUP_COACH_KEY,"done");dialog.remove()};
+  document.body.append(dialog);dialog.showModal();
+}
 function renderMaintenance(){
   const config=maintenanceConfig();
   document.body.classList.add("maintenance-mode");
@@ -414,6 +503,8 @@ function render(){
     }
     bind();
     applyTheme();
+    requestAnimationFrame(showOnboarding);
+    requestAnimationFrame(showSetupCoach);
     requestAnimationFrame(()=>document.querySelectorAll(".life-log ol").forEach(log=>{log.scrollTop=log.scrollHeight}));
     requestAnimationFrame(maybeShowPageGuide);
   }catch(error){
@@ -508,6 +599,7 @@ function bind(){
     if(residents.length&&!residents.includes(state.activeId))setActive(residents[0]);
     const was=state.homeEditMode;
     setHomeEditMode(!was);
+    if(was&&localStorage.getItem(SETUP_COACH_KEY)==="home-editing")localStorage.setItem(SETUP_COACH_KEY,"town");
     render();
     if(was)await explicitSave("집 편집 저장");
   });
@@ -517,6 +609,14 @@ function bind(){
     if(!opened)window.location.href="mailto:kkyaareuk@gmail.com";
   }));
   $("[data-add-room]")?.addEventListener("click",()=>{addRoom(state.activeHomeId);render()});
+  $$("[data-open-room-editor]").forEach(el=>{
+    el.onclick=event=>{
+      if(event.target.closest("[data-home-person],button"))return;
+      openRoomEditor(el.dataset.homeId,el.dataset.openRoomEditor);
+    };
+    el.onkeydown=event=>{if(["Enter"," "].includes(event.key)){event.preventDefault();openRoomEditor(el.dataset.homeId,el.dataset.openRoomEditor)}};
+  });
+  $$("[data-open-room-image-menu]").forEach(el=>el.onclick=event=>{event.stopPropagation();openRoomImageMenu(el.dataset.homeId,el.dataset.openRoomImageMenu)});
   $("[data-add-pet]")?.addEventListener("click",()=>{addPet(state.activeHomeId);render()});
   $("[data-add-car]")?.addEventListener("click",()=>{addCar(state.activeHomeId);render()});
   $$("[data-car-field]").forEach(el=>el.oninput=()=>updateCar(el.dataset.homeId,el.dataset.carId,{[el.dataset.carField]:el.type==="number"?Number(el.value):el.value}));
@@ -1340,20 +1440,20 @@ document.addEventListener("change",event=>{
 });
 render();
 if(!maintenanceEnabled())showInstallButton();
-if(!maintenanceEnabled()&&localStorage.getItem("drawer-village-hide-photo-backup-notice")!=="1"&&localStorage.getItem("parallel-city-hide-photo-backup-notice")!=="1"){
+if(!maintenanceEnabled()&&state.order.length&&localStorage.getItem("drawer-village-hide-photo-backup-notice")!=="1"&&localStorage.getItem("parallel-city-hide-photo-backup-notice")!=="1"){
   const notice=document.createElement("dialog");notice.className="backup-notice";
   notice.innerHTML=`<form method="dialog"><h2>사진 보관 안내</h2><p>사진 파일을 직접 올리면 Google 저장 공간에 함께 보관돼요. 용량을 아끼고 싶다면 사진 파일 대신 <b>웹에 공개된 이미지 주소</b>를 입력해 주세요. 기본 사진 저장 공간은 <b>최대 120장·총 20MB</b>이며 상점에서 50MB로 늘릴 수 있어요. 같은 사진은 중복으로 올리지 않고, 현재 사용량은 설정에서 확인할 수 있습니다.</p><label><input type="checkbox" name="hide"> 다시는 보지 않기</label><button class="primary" value="ok">알겠어요</button></form>`;
   notice.onclose=()=>{if(notice.querySelector('[name="hide"]')?.checked)localStorage.setItem("drawer-village-hide-photo-backup-notice","1");notice.remove()};
   document.body.append(notice);notice.showModal();
 }
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260806ao").catch(error=>{
+  import("./auth.js?v=20260806aq").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260806ao",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260806aq",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();

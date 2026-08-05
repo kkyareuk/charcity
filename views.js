@@ -1,5 +1,5 @@
-import {state,active,characterViewFor} from "./state.js?v=20260806ap";
-import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806ap";
+import {state,active,characterViewFor} from "./state.js?v=20260806aq";
+import {eventFor,visibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806aq";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const JOBS=["무직","학생","회사원","CEO","의사","간호사","교사","교수","정치인","기자","요리사","프로그래머","연구원","예술가","해적","군인","범죄자","환경미화원","여관주인","자영업·직접 입력"];
@@ -341,7 +341,7 @@ function homeCard(id,chars){
     const furniture=FURNITURE[room.type||key]||FURNITURE.other;
     return `<div class="room ${roomClasses[key]||"custom-room"} ${edit?"room-edit-target":""}" ${roomStyle(h,key)} ${edit?`data-open-room-editor="${key}" data-home-id="${id}" tabindex="0" role="button" aria-label="${esc(room.name||key)} 편집`:""}>
       <b>${esc(room.name||key)}</b>
-      ${edit&&!room.image?`<button type="button" class="room-empty-image" data-open-room-image-menu="${key}" data-home-id="${id}"><span>＋</span>사진 추가하기</button>`:""}
+      ${!room.image?`<button type="button" class="room-empty-image" data-open-room-image-menu="${key}" data-home-id="${id}"><span>＋</span>사진 추가하기</button>`:""}
       ${edit?`<span class="room-edit-hint">눌러서 편집</span>`:""}
       <div class="room-people">${shownPeople.map(c=>{const e=sceneFor(c);return `<button class="home-person" data-home-person="${c.id}">${avatar(c)}<span><b>${esc(c.name)}</b><small>${esc(e?.title||"집에서 시간을 보내는 중")}</small></span></button>`}).join("")}</div>
       <div class="room-pets">${shownPets.map(p=>`<button class="room-pet" title="${esc(petScenes[p.id].desc)}">${p.icon?`<img class="room-pet-icon" src="${esc(p.icon)}" alt="">`:p.photo?`<img class="room-pet-photo" src="${esc(p.photo)}" alt="">`:`<span class="room-pet-emoji">${petEmoji[p.species]||"🐾"}</span>`}<span class="room-pet-status"><b>${esc(p.name)}</b><small>${esc(petScenes[p.id].title.replace(`${h.rooms?.[key]?.name||"집 안"}에서 `,""))}</small></span></button>`).join("")}</div>
