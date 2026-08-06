@@ -733,10 +733,11 @@ export function addTown(limit=2){
   const town={id,name:`새 마을 ${state.towns.length+1}`,bg:base.bg,era:"modern",places:[]};
   state.towns.push(town);state.activeTownId=id;state.world=clone(town);save(true);return id;
 }
-export function switchTown(id){
+export function switchTown(id,{activeId}={}){
   syncTown();const town=state.towns.find(t=>t.id===id);if(!town)return;
   state.activeTownId=id;state.world=clone(town);
-  const localCharacter=state.order.find(cid=>state.characters[cid]?.townId===id);
+  const requestedCharacter=state.characters[activeId]?.townId===id?activeId:null;
+  const localCharacter=requestedCharacter||state.order.find(cid=>state.characters[cid]?.townId===id);
   if(localCharacter)state.activeId=localCharacter;
   save(true);
 }
