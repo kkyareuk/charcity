@@ -1,4 +1,4 @@
-import {state,save,characterViewFor} from "./state.js?v=20260806bc";
+import {state,save,characterViewFor} from "./state.js?v=20260806bd";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -80,7 +80,28 @@ const wakeScene=(c,d=new Date())=>{
   };
   return scenes[habit]||scenes["알람을 듣고 천천히 일어남"];
 };
-const townFor=c=>state.towns.find(t=>t.id===c.townId)||state.towns[0]||state.world;
+const residenceForDate=(c,date=new Date())=>{
+  const residences=(Array.isArray(c?.residences)?c.residences:[]).filter(item=>item&&state.homes?.[item.homeId]);
+  const primary=residences.find(item=>item.isPrimary)||residences.find(item=>item.homeId===c?.homeId)||residences[0]||null;
+  const day=date.getDay(),dateKey=`${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+  const scheduled=residences.filter(item=>{
+    if(item===primary)return false;
+    const exact=String(item.visitDates||"").split(/[\s,]+/).includes(dateKey);
+    const chosenDay=(item.visitDays||[]).map(Number).includes(day);
+    if(exact)return true;
+    if(item.stayPattern==="요일 지정")return chosenDay;
+    if(item.stayPattern==="주말 중심")return day===0||day===6;
+    if(item.stayPattern==="평일 중심")return day>=1&&day<=5;
+    return false;
+  });
+  if(!scheduled.length)return primary;
+  return scheduled[hash(`${c.id}:${dayKey(date)}:scheduled-home`)%scheduled.length];
+};
+const homeIdForDate=(c,date=new Date())=>residenceForDate(c,date)?.homeId||c?.homeId||"";
+const townFor=(c,date=new Date())=>{
+  const home=state.homes?.[homeIdForDate(c,date)];
+  return state.towns.find(t=>t.id===(home?.townId||c.townId))||state.towns.find(t=>t.id===c.townId)||state.towns[0]||state.world;
+};
 const workplaceTown=c=>state.towns.find(t=>t.places?.some(p=>p.id===c.workplaceId));
 const scheduledTown=(c,date=new Date())=>{
   const routine=(state.routines?.[c.id]||[]).find(item=>Number(item.day)===date.getDay()&&item.placeId);
@@ -89,13 +110,13 @@ const scheduledTown=(c,date=new Date())=>{
 const travelPurpose=(c,date=new Date())=>{
   const birthdayKey=`${String(date.getMonth()+1).padStart(2,"0")}${String(date.getDate()).padStart(2,"0")}`;
   const birthdayHost=state.order.map(id=>state.characters[id]).find(character=>character?.birthday===birthdayKey);
-  if(birthdayHost)return {town:townFor(birthdayHost),label:`${birthdayHost.name}의 생일파티`,kind:"birthday"};
+  if(birthdayHost)return {town:townFor(birthdayHost,date),label:`${birthdayHost.name}의 생일파티`,kind:"birthday"};
   const workTown=workplaceTown(c);
   if(workTown&&c.job!=="무직")return {town:workTown,label:"출근 일정",kind:"work"};
   const routine=(state.routines?.[c.id]||[]).find(item=>Number(item.day)===date.getDay()&&item.placeId);
   const town=scheduledTown(c,date);
   if(town)return {town,label:routine?.title||routine?.type||"등록한 일정",kind:"routine"};
-  return {town:townFor(c),label:"",kind:"home"};
+  return {town:townFor(c,date),label:"",kind:"home"};
 };
 const activityTown=(c,date=new Date())=>{
   return travelPurpose(c,date).town;
@@ -159,6 +180,9 @@ function selectedBodyVariants(c,socialScene){
   if(conditions.includes("당뇨병"))variants.push("오늘 일정에 필요한 측정 도구와 비상용 간식을 챙겼는지 확인하고 자기 관리 계획에 맞춰 움직였어요.","식사와 휴식 시각을 스스로 정한 관리 계획에 맞게 확인하되 하던 일의 즐거움도 놓치지 않았어요.");
   if(conditions.some(value=>["천식","심혈관 질환","관절 질환","만성 통증","신장 질환"].includes(value)))variants.push("몸의 신호를 무시하지 않고 필요한 때 잠깐 쉬면서 자기에게 맞는 속도로 일상을 이어 갔어요.","무리해서 증명하려 하지 않고 오늘 컨디션에 맞게 순서와 강도를 스스로 조절했어요.");
   if(p.bodySize==="비만 체형")variants.push("자기 몸이 편안한 의자와 움직이기 좋은 공간을 자연스럽게 골라 하던 일에 집중했어요.");
+  const physicalTraits=Array.isArray(p.physicalTraits)?p.physicalTraits:[];
+  if(physicalTraits.includes("키가 큼"))variants.push("높은 곳의 물건도 자기에게 익숙한 동작으로 꺼내고 부딪힐 수 있는 낮은 구조물을 자연스럽게 살폈어요.");
+  if(physicalTraits.includes("키가 작음"))variants.push("손이 닿기 편한 위치와 안전한 발판을 골라 필요한 물건을 자기 방식으로 꺼냈어요.");
   const preferences=Array.isArray(p.accessibilityPreferences)?p.accessibilityPreferences:[];
   if(socialScene&&preferences.includes("도움 전에 먼저 물어보기"))variants.push("상대는 필요를 짐작해 대신 처리하지 않고 도움이 필요한지 먼저 물은 뒤 선택을 존중했어요.");
   if(socialScene&&preferences.includes("보조기기 함부로 만지지 않기"))variants.push("일행은 보조기기를 몸의 일부이자 개인 물건으로 존중해 허락 없이 만지거나 옮기지 않았어요.");
@@ -420,6 +444,23 @@ function homeEntry(c,time,title="거실에서 쉬는 중",desc="거실 소파에
   const resolvedRoom=room==="bedroom"?(c.sleepRoomId||"bedroom"):room;
   return adaptAccessibilityWording(c,entry(time,title,desc,{home:true,room:resolvedRoom}));
 }
+function withResidenceLocation(c,item,date=new Date()){
+  if(!item?.home)return item;
+  const homeId=item.visitHomeId||homeIdForDate(c,date),home=state.homes?.[homeId];
+  if(!home)return {...item,visitHomeId:""};
+  const residence=(c.residences||[]).find(value=>value.homeId===homeId);
+  const rooms=home.rooms||{};
+  let room=item.room;
+  const requestsSleepingRoom=room==="bedroom"||room===c.sleepRoomId||/침실|잠드는|잠에서|잠자리에/.test(`${item.title||""} ${item.desc||""}`);
+  if(requestsSleepingRoom)room=residence?.sleepRoomId||c.sleepRoomId||"bedroom";
+  if(!rooms[room]){
+    room=Object.keys(rooms).find(key=>rooms[key]?.type===item.room)
+      ||(item.room==="bedroom"&&residence?.sleepRoomId)
+      ||Object.keys(rooms)[0]
+      ||"";
+  }
+  return {...item,visitHomeId:homeId,room};
+}
 const away=(c,extra={},date=new Date())=>({townId:activityTown(c,date)?.id||c.townId||state.towns[0]?.id,...extra});
 
 function morningScripts(c,date){
@@ -610,7 +651,7 @@ function workEvent(c,time,date){
   const pool=matches?.[1]||[["직업 업무를 처리하는 중",`${c.jobTitle||c.job}에게 필요한 실무를 일정과 우선순위에 맞춰 진행하고 있어요.`]];
   const text=pool[hash(`${c.id}:${dayKey(date)}:job-scene`)%pool.length];
   if(!c.workplaceId||c.workplaceId==="home")return homeEntry(c,time,c.workplaceId==="home"?"자택에서 "+text[0]:text[0],text[1],"study");
-  const p=(townFor(c)?.places||[]).find(x=>x.id===c.workplaceId)||placeFor(["사무실","회사","학교"],`${c.id}:work`,c);
+  const p=(townFor(c,date)?.places||[]).find(x=>x.id===c.workplaceId)||placeFor(["사무실","회사","학교"],`${c.id}:work`,c);
   return entry(time,text[0],text[1],away(c,{placeId:p?.id,mood:"집중",stress:Math.min(100,25+(hash(`${c.id}:${dayKey(date)}:work`)%35))}));
 }
 
@@ -879,7 +920,7 @@ function relationshipHomeEntry(c,pick,time,date){
   const openness=c.relationshipOpenness||"설정하지 않음 · 절대 끌리지 않음";
   const opennessAllows=openness==="연인이 있어도 취향이면 끌릴 수 있음"||(!hasPartner&&openness==="연인이 없을 때만 취향이면 끌림");
   const attractionAllowed=opennessAllows&&!(c.attractedGenders||[]).includes("없음")&&(c.attractedGenders||[]).includes(other.gender);
-  const otherTraits=[...(other.appearanceTags||[]),other.job,other.jobTitle,other.wealth,/의사|변호사|교수|연구|회계사|건축|약사|간호사|전문/.test(`${other.job||""} ${other.jobTitle||""}`)?"전문직":"",/예술|화가|작가|음악|배우|디자이너/.test(`${other.job||""} ${other.jobTitle||""}`)?"예술가 기질":"",/교사|군인|경찰|소방|승무원/.test(`${other.job||""} ${other.jobTitle||""}`)?"제복이 어울림":""].filter(Boolean);
+  const otherTraits=[...(other.appearanceTags||[]),...(other.bodyProfile?.physicalTraits||[]),other.job,other.jobTitle,other.wealth,/의사|변호사|교수|연구|회계사|건축|약사|간호사|전문/.test(`${other.job||""} ${other.jobTitle||""}`)?"전문직":"",/예술|화가|작가|음악|배우|디자이너/.test(`${other.job||""} ${other.jobTitle||""}`)?"예술가 기질":"",/교사|군인|경찰|소방|승무원/.test(`${other.job||""} ${other.jobTitle||""}`)?"제복이 어울림":""].filter(Boolean);
   const matchedLooks=(c.attractionTraits||[]).filter(tag=>otherTraits.includes(tag));
   const noticesLooks=/꽤 중요하게 봄|외모에 크게 끌림/.test(c.appearanceInterest||"");
   const visuallyDrawn=attractionAllowed&&noticesLooks&&(matchedLooks.length||/매력적임|매우 아름답거나 잘생김|시선을 사로잡음/.test(other.appearanceLevel||""));
@@ -1358,28 +1399,29 @@ function recordedInteractionEntries(c,date){
       const desc=c.id===action.actorId?`${other?.name}의 반응을 살피며 직접 고른 ${itemName}을(를) 건넸어요.`:liked?`평소 좋아하던 ${itemName}이라 표정이 밝아지고 바로 가까이 두었어요.`:`예상하지 못한 ${itemName}을(를) 받아 고맙다고 말하고 자기 취향에 어떻게 맞을지 살펴보고 있어요.`;
       return entry(minute,title,desc,{home:true,room:"living",withId:other?.id,interactionId:action.id});
     }
-    if(action.type==="exercise")return entry(minute,`${other?.name}와 함께 운동하는 중`,(c.hobbies||[]).includes("운동")?"익숙한 동작과 호흡을 맞추며 서로의 속도에 맞춰 즐겁게 몸을 움직이고 있어요.":"익숙하지 않은 동작은 조심스럽게 따라 하며 왜 이걸 즐기는지 조금씩 알아가고 있어요.",{townId:townFor(c).id,placeId:placeFor(["공원"],`${action.id}:exercise`,c,date)?.id,withId:other?.id,interactionId:action.id});
-    return entry(minute,`${other?.name}와 함께 나들이하는 중`,"둘이 가고 싶던 장소를 골라 주변을 천천히 둘러보고 눈에 띄는 풍경 앞에서 이야기를 나누고 있어요.",{townId:townFor(c).id,placeId:placeFor(["공원","카페"],`${action.id}:outing`,c,date)?.id,withId:other?.id,interactionId:action.id});
+    if(action.type==="exercise")return entry(minute,`${other?.name}와 함께 운동하는 중`,(c.hobbies||[]).includes("운동")?"익숙한 동작과 호흡을 맞추며 서로의 속도에 맞춰 즐겁게 몸을 움직이고 있어요.":"익숙하지 않은 동작은 조심스럽게 따라 하며 왜 이걸 즐기는지 조금씩 알아가고 있어요.",{townId:townFor(c,date).id,placeId:placeFor(["공원"],`${action.id}:exercise`,c,date)?.id,withId:other?.id,interactionId:action.id});
+    return entry(minute,`${other?.name}와 함께 나들이하는 중`,"둘이 가고 싶던 장소를 골라 주변을 천천히 둘러보고 눈에 띄는 풍경 앞에서 이야기를 나누고 있어요.",{townId:townFor(c,date).id,placeId:placeFor(["공원","카페"],`${action.id}:outing`,c,date)?.id,withId:other?.id,interactionId:action.id});
   });
 }
 function build(c,date=new Date()){
+  const currentHomeId=homeIdForDate(c,date);
   const wake=wakeAt(c,date), sleep=sleepAt(c,date);
   const sleepMinute=sleep<=wake?sleep+1440:sleep;
   const list=[entry(wake,"기상",wakeScene(c,date),{home:true,room:c.sleepRoomId||"bedroom",mood:"평온",stress:5})];
   list.push(...recordedInteractionEntries(c,date));
   list.push(homeEntry(c,wake+20,"욕실에서 씻는 중","세면대 앞에서 세수하고 이를 닦으며 잠을 깨고 있어요.","bath"));
   list.push(homeEntry(c,wake+45,"주방에서 아침 준비 중","냉장고를 열어 먹을 것을 고르고 식탁에 아침을 차리고 있어요.","kitchen"));
-  const morningRelation=related(c).filter(x=>x.other.homeId===c.homeId).sort((a,b)=>(relationPriority[b.r.type]||0)-(relationPriority[a.r.type]||0))[0];
+  const morningRelation=related(c).filter(x=>homeIdForDate(x.other,date)===currentHomeId).sort((a,b)=>(relationPriority[b.r.type]||0)-(relationPriority[a.r.type]||0))[0];
   const morningTogether=morningRelation&&relationshipMorningEntry(c,morningRelation,wake+58,date);
   if(morningTogether)list.push(morningTogether);
-  const purpose=travelPurpose(c,date),destination=purpose.town,homeTown=townFor(c);
+  const purpose=travelPurpose(c,date),destination=purpose.town,homeTown=townFor(c,date);
   const destinationPurpose=purpose.label;
   const work=purpose.kind==="birthday"&&workplaceTown(c)?.id!==destination.id?null:workEvent(c,Math.max(wake+90,540),date);
-  const homeCars=state.homes[c.homeId]?.cars||[];
-  const rideablePet=(state.homes[c.homeId]?.pets||[]).find(p=>p.rideable&&["드래곤","호랑이"].includes(p.species));
+  const homeCars=state.homes[currentHomeId]?.cars||[];
+  const rideablePet=(state.homes[currentHomeId]?.pets||[]).find(p=>p.rideable&&["드래곤","호랑이"].includes(p.species));
   const useMount=rideablePet&&(hash(`${c.id}:${dayKey(date)}:mount`)%2===0);
   const relation=preferredRelation(c),romantic=relation&&["부부","연인"].includes(relation.r.type)?relation.other:null;
-  const partnerCars=romantic?state.homes[romantic.homeId]?.cars||[]:[];
+  const partnerCars=romantic?state.homes[homeIdForDate(romantic,date)]?.cars||[]:[];
   const partnerCanDrive=romantic?.driverLicense&&partnerCars.length&&activityTown(romantic,date)?.id===destination.id;
   const selfCanDrive=c.driverLicense&&homeCars.length;
   if(destinationPurpose&&destination.id!==homeTown.id){
@@ -1416,7 +1458,7 @@ function build(c,date=new Date()){
   const birthdayKey=`${String(date.getMonth()+1).padStart(2,"0")}${String(date.getDate()).padStart(2,"0")}`;
   const birthdayCharacters=state.order.map(id=>state.characters[id]).filter(character=>character?.birthday===birthdayKey);
   if(birthdayCharacters.length){
-    const host=birthdayCharacters[0],hostTown=townFor(host),restaurants=(hostTown?.places||[]).filter(place=>place.type==="음식점");
+    const host=birthdayCharacters[0],hostTown=townFor(host,date),restaurants=(hostTown?.places||[]).filter(place=>place.type==="음식점");
     const restaurant=restaurants.length&&hash(`${birthdayKey}:${date.getFullYear()}:birthday-place`)%2===0?restaurants[hash(`${birthdayKey}:restaurant`)%restaurants.length]:null;
     const names=birthdayCharacters.map(character=>character.name).join(", "),isBirthday=birthdayCharacters.some(character=>character.id===c.id);
     const title=isBirthday?`${names}의 생일파티에서 축하받는 중`:`${names}의 생일파티에서 함께 축하하는 중`;
@@ -1445,7 +1487,7 @@ function build(c,date=new Date()){
     if(romanticRelation){
       const partner=state.characters[social.withId],dateGroup=`date-${[c.id,social.withId].sort().join("-")}-${dayKey(date)}`;
       const datePlace=interactionPlace(social.placeId,social.townId||c.townId);
-      const purpose=datePurpose(datePlace||{type:"집",id:`home:${c.homeId}`},c,partner,date);
+      const purpose=datePurpose(datePlace||{type:"집",id:`home:${currentHomeId}`},c,partner,date);
       social.title=`${partner?.name}와 데이트 · ${purpose}`;
       social.desc=`${partner?.name}와 오늘 하기로 정한 ‘${purpose}’을(를) 이어 가며 각자의 속도와 취향에 맞춰 시간을 보내고 있어요.`;
       social.dateGroup=dateGroup;social.mood="데이트";
@@ -1461,9 +1503,10 @@ function build(c,date=new Date()){
     list.push(entry(returnMinute,returnTitle,returnDesc,{townId:homeTown.id,transit:true,returningHome:true,transportMode:returnMode,withId:returnMode==="partner"?romantic.id:undefined,mood:"이동"}));
   }
   let stress=Math.max(...list.map(x=>x.stress||0));
-  const housemate=state.order.map(id=>state.characters[id]).find(other=>other&&other.id!==c.id&&other.homeId===c.homeId);
-  const sameBedroomRelation=related(c).filter(x=>x.other.homeId===c.homeId&&(x.other.sleepRoomId||"bedroom")===(c.sleepRoomId||"bedroom")).sort((a,b)=>(relationPriority[b.r.type]||0)-(relationPriority[a.r.type]||0))[0];
-  const homeRelation=related(c).filter(x=>x.other.homeId===c.homeId).sort((a,b)=>(relationPriority[b.r.type]||0)-(relationPriority[a.r.type]||0))[0];
+  const currentResidence=residenceForDate(c,date),currentSleepRoom=currentResidence?.sleepRoomId||c.sleepRoomId||"bedroom";
+  const housemate=state.order.map(id=>state.characters[id]).find(other=>other&&other.id!==c.id&&homeIdForDate(other,date)===currentHomeId);
+  const sameBedroomRelation=related(c).filter(x=>homeIdForDate(x.other,date)===currentHomeId&&(residenceForDate(x.other,date)?.sleepRoomId||x.other.sleepRoomId||"bedroom")===currentSleepRoom).sort((a,b)=>(relationPriority[b.r.type]||0)-(relationPriority[a.r.type]||0))[0];
+  const homeRelation=related(c).filter(x=>homeIdForDate(x.other,date)===currentHomeId).sort((a,b)=>(relationPriority[b.r.type]||0)-(relationPriority[a.r.type]||0))[0];
   const otherSleep=housemate?(()=>{const value=sleepAt(housemate,date);return value<=wakeAt(housemate,date)?value+1440:value})():Infinity;
   const eveningMinute=Math.max(1020,Math.min(1260,sleepMinute-45,otherSleep-45));
   if(sameBedroomRelation){
@@ -1471,7 +1514,7 @@ function build(c,date=new Date()){
     const beforeSleep=Math.max(0,Math.min(sleepMinute,otherBedtime)-25);
     const scene=relationshipHomeEntry(c,sameBedroomRelation,beforeSleep,date);
     scene.title=`잠들기 전 · ${scene.title}`;
-    scene.room=c.sleepRoomId||"bedroom";
+    scene.room=currentSleepRoom;
     scene.withId=sameBedroomRelation.other.id;
     scene.bedtimeInteraction=true;
     list.push(scene);
@@ -1521,13 +1564,13 @@ function build(c,date=new Date()){
       list.push(homeEntry(c,minute,script[0],script[1],script[2]));
     }
   }
-  return list.map(item=>adaptAccessibilityWording(c,medievalize(c,item,date))).sort((a,b)=>a.minute-b.minute);
+  return list.map(item=>withResidenceLocation(c,adaptAccessibilityWording(c,medievalize(c,item,date)),date)).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260806bc";
+const ENGINE_VERSION="20260806bd";
 // 코드 업데이트는 이미 저장된 생활을 바꾸지 않습니다.
 // 캐릭터·관계·일정처럼 사용자가 직접 바꾼 설정만 새 장면 계산에 반영합니다.
-function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,personalityTypes:c.personalityTypes,characterTraits:c.characterTraits,traitExpressions:c.traitExpressions,traitNotesInScripts:c.traitNotesInScripts,traitNotes:c.traitNotesInScripts?c.traitNotes:"",bodyProfile:c.bodyProfile,timelineResetAt:c.timelineResetAt,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
+function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,residences:c.residences,homes:(c.residences||[]).map(item=>{const home=state.homes[item.homeId];return[home?.id,home?.kind,home?.townId,Object.keys(home?.rooms||{}),home?.cars?.length,home?.pets?.length]}),ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,personalityTypes:c.personalityTypes,characterTraits:c.characterTraits,traitExpressions:c.traitExpressions,traitNotesInScripts:c.traitNotesInScripts,traitNotes:c.traitNotesInScripts?c.traitNotes:"",bodyProfile:c.bodyProfile,timelineResetAt:c.timelineResetAt,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
 
 function mergeImmutableEntries(kept,generated){
   const merged=[...kept],seen=new Set(kept.map(item=>`${item.minute}|${item.title}|${item.placeId||""}|${item.room||""}`));
@@ -1564,8 +1607,10 @@ function cleanInvalidRoomAndHobbyEntries(c,entries){
   const interests=[...(c.hobbies||[]),...(c.interests||[])].map(String);
   const likesScent=interests.some(value=>/향수|향수 시향|조향|향기/.test(value));
   return entries.filter(item=>!(item.title?.includes("침실에서 향을 고르는")&&!likesScent)).map(item=>{
-    if(item.home&&item.title?.startsWith("침실에서")&&item.room!==(c.sleepRoomId||"bedroom")){
-      return {...item,room:c.sleepRoomId||"bedroom"};
+    const residence=(c.residences||[]).find(value=>value.homeId===(item.visitHomeId||c.homeId));
+    const sleepRoom=residence?.sleepRoomId||c.sleepRoomId||"bedroom";
+    if(item.home&&item.title?.startsWith("침실에서")&&item.room!==sleepRoom){
+      return {...item,room:sleepRoom};
     }
     return item;
   });
@@ -1687,15 +1732,15 @@ function liveGapEvent(c,last,n,date){
 }
 function baseEventFor(c,date=new Date()){
   const n=nowMin(date);
-  if(sleepingNow(c,date))return entry(n,"자는 중",sleepScene(c,date),{home:true,room:c.sleepRoomId||"bedroom",mood:"수면",stress:0});
+  if(sleepingNow(c,date))return withResidenceLocation(c,entry(n,"자는 중",sleepScene(c,date),{home:true,room:"bedroom",mood:"수면",stress:0}),date);
   const list=timeline(c,date), past=list.filter(x=>x.minute<=n);
   const last=past.at(-1);
   const nextGap=last?15+(hash(`${c.id}:${dayKey(date)}:${last.minute}:reaction-gap`)%16):15;
-  if(last&&n-last.minute>=nextGap)return commitLiveEntry(c,date,liveGapEvent(c,last,n,date));
-  if(last)return last;
-  if(c.createdAt&&Date.now()-Number(c.createdAt)<24*60*60*1000)return entry(n,"아직 생활을 시작하지 않음","프로필과 집, 일정을 설정하면 지금부터 생활이 시작돼요.",{home:true,room:c.sleepRoomId||"bedroom",mood:"대기",stress:0});
-  if(n<Math.min(wakeAt(c,date),240))return entry(n,"잠들기 전 시간을 보내는 중","자정이 지난 늦은 밤, 오늘 일정을 시작하는 대신 조용히 하루를 마무리하고 있어요.",{home:true,room:"bedroom",mood:"차분",stress:2});
-  return entry(n,"집에서 아침 준비 중","기상 시각이 지나 오늘 일정을 시작할 준비를 하고 있어요.",{home:true,room:"bath",mood:"평온",stress:5});
+  if(last&&n-last.minute>=nextGap)return commitLiveEntry(c,date,withResidenceLocation(c,liveGapEvent(c,last,n,date),date));
+  if(last)return withResidenceLocation(c,last,date);
+  if(c.createdAt&&Date.now()-Number(c.createdAt)<24*60*60*1000)return withResidenceLocation(c,entry(n,"아직 생활을 시작하지 않음","프로필과 집, 일정을 설정하면 지금부터 생활이 시작돼요.",{home:true,room:"bedroom",mood:"대기",stress:0}),date);
+  if(n<Math.min(wakeAt(c,date),240))return withResidenceLocation(c,entry(n,"잠들기 전 시간을 보내는 중","자정이 지난 늦은 밤, 오늘 일정을 시작하는 대신 조용히 하루를 마무리하고 있어요.",{home:true,room:"bedroom",mood:"차분",stress:2}),date);
+  return withResidenceLocation(c,entry(n,"집에서 아침 준비 중","기상 시각이 지나 오늘 일정을 시작할 준비를 하고 있어요.",{home:true,room:"bath",mood:"평온",stress:5}),date);
 }
 const RELATION_CLOSENESS={부부:100,연인:95,"부모·자녀":92,"형제·자매":90,소꿉친구:84,친구:78,동거인:68,직장동료:54,라이벌:42,혐관:35};
 const VIEW_IMPORTANCE=[
@@ -2467,4 +2512,4 @@ export function eventFor(c,date=new Date()){
   return current;
 }
 export function charactersAtPlace(id,townId=state.activeTownId){return state.order.map(x=>state.characters[x]).filter(c=>{const e=baseEventFor(c);return e.placeId===id&&e.townId===townId})}
-export function homeGroups(){const out={};state.order.forEach(id=>{const c=state.characters[id];if(c)(out[c.homeId||id]??=[]).push(c)});return out}
+export function homeGroups(){const out={};state.order.forEach(id=>{const c=state.characters[id];if(!c)return;(c.residences||[]).forEach(item=>{if(state.homes[item.homeId])(out[item.homeId]??=[]).push(c)})});return out}

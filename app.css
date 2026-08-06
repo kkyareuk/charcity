@@ -644,6 +644,27 @@ body,button,input,select,small,b,p,span{word-break:keep-all;overflow-wrap:break-
 @media(max-width:700px){.health-field-grid{grid-template-columns:1fr}.health-accessibility-settings{padding:14px}.representation-warning{padding:13px}}
 .character-view-fields{contain:layout style}
 .character-view-fields label{content-visibility:auto;contain-intrinsic-size:110px}
+
+/* 여러 집·생활 거점 */
+.home-page>.title{align-items:flex-start;gap:18px}.home-page>.title h1,.home-page>.title p{margin:0}.home-page>.title p{margin-top:7px;color:var(--muted);line-height:1.55}
+.home-top-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.home-tabs button{display:grid;gap:3px;min-width:190px;text-align:left}.home-tabs button small{font-size:11px;color:inherit;opacity:.82}
+.home-identity-editor{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:end;gap:10px;margin:14px 0;padding:15px;border:1px solid var(--line);border-radius:18px;background:#faf8f5}
+.home-identity-editor label{display:grid;gap:6px;min-width:0}.home-identity-editor .danger{white-space:nowrap}
+.resident-editor{display:grid;gap:13px}.resident-editor>.title h3,.resident-editor>.title small{margin:0}.resident-editor>.title small{display:block;margin-top:5px;color:var(--muted)}
+.resident-editor>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.resident-setting{display:grid;gap:10px;padding:10px;border:1px solid var(--line);border-radius:17px;background:#fff}
+.resident-setting>button{width:100%;justify-content:flex-start;text-align:left}.resident-setting>button span{display:grid;gap:2px}.resident-setting>button small{color:var(--muted)}
+.resident-setting.on{border-color:color-mix(in srgb,var(--p) 45%,var(--line));background:color-mix(in srgb,var(--p) 4%,#fff)}
+.residence-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding-top:10px;border-top:1px solid var(--line)}
+.residence-fields label,.residence-fields fieldset{display:grid;gap:5px;min-width:0;margin:0}.residence-fields input,.residence-fields select{width:100%;min-width:0}
+.residence-fields fieldset{padding:9px;border:1px solid var(--line);border-radius:13px;background:#fff}.residence-fields legend{padding:0 5px;font-size:12px;font-weight:800}
+.residence-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.resident-editor .residence-days button{display:grid;place-items:center;min-width:0;padding:7px 2px}
+.residence-fields>[data-residence-primary]{align-self:end;justify-content:center}.residence-fields>[data-residence-primary].on{color:#fff;background:var(--grad);border-color:transparent}
+.body-pane .health-accessibility-settings{margin-top:0}
+@media(max-width:850px){.home-identity-editor{grid-template-columns:1fr 1fr}.home-identity-editor .danger{grid-column:1/-1}.resident-editor>div{grid-template-columns:1fr}}
+@media(max-width:600px){.home-page>.title{display:grid}.home-top-actions{justify-content:stretch}.home-top-actions button{flex:1}.home-identity-editor,.residence-fields{grid-template-columns:1fr}.home-identity-editor .danger{grid-column:auto}.resident-setting{padding:8px}.residence-days{gap:2px}}
+
 .native-app body{padding-top:env(safe-area-inset-top)}
 #native-network-banner{
   position:sticky;

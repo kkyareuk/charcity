@@ -1,7 +1,7 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806bc";
-import {eventFor} from "./simulation.js?v=20260806bc";
-import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806bc";
-import {recordCharacterInteraction} from "./state.js?v=20260806bc";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806bd";
+import {eventFor} from "./simulation.js?v=20260806bd";
+import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806bd";
+import {recordCharacterInteraction} from "./state.js?v=20260806bd";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -204,7 +204,7 @@ function profileExportLines(character){
   const sections=[
     exportSection("기본 정보",[["이름",character.name],["나이대",character.ageGroup],["성별",character.gender==="그외"?"":character.gender],["끌리는 대상",character.attractionTarget],["새로운 사람에게 끌리는 정도",character.relationshipOpenness],["직업",character.jobTitle||character.job],["생일",character.birthday?`${character.birthday.slice(0,2)}월 ${character.birthday.slice(2)}일`:""],["재산",character.wealth],["소비 유형",character.income],["기상 시각",character.wake],["기상 습관",character.wakeHabit],["취침 시각",character.sleep],["수면 습관",character.sleepHabit],["신체 접촉 반응",character.touchReaction],["외모가 눈에 띄는 정도",character.appearanceLevel==="보통"?"":character.appearanceLevel],["외모 태그",listText(character.appearanceTags)],["상대 외모를 보는 정도",character.appearanceInterest==="보통"?"":character.appearanceInterest],["끌리는 특징",listText(character.attractionTraits)]]),
     exportSection("성격",[["전체적인 유형",listText(character.personalityTypes)],["사람과 어울리는 방식",character.socialStyle],["정보를 받아들이는 방식",character.perceptionStyle],["판단하는 방식",character.decisionStyle],["일정을 다루는 방식",character.planningStyle],["행동 전환",character.activityTempo],["깔끔함",character.neatness],["패션 감각",character.fashionSense],["간섭 성향",character.interference],["갈등 대응",character.conflictStyle],["애정 표현",character.affectionStyle],["생활 에너지",character.energyRhythm],["유머·장난 성향",character.humorStyle],["감정 표현의 크기",character.emotionalExpression],["충동을 참는 정도",character.impulseControl],["서사·인지 특성",listText(character.characterTraits)],["장면에 반영할 특성 표현",listText(character.traitExpressions)],["특성 표현 메모",character.traitNotes],["메모를 로그에 반영",character.traitNotesInScripts?"사용":""]]),
-    exportSection("신체·건강·접근성",[["체형",body.bodySize],["만성질환·건강 관리",listText(body.healthConditions)],["기타 건강 상태",body.healthOther],["휠체어",wheelchair.type],["휠체어 이용 방식",wheelchair.pattern],["의수 사용 부위",arm.side],["의수 종류",arm.custom||arm.type],["의족 사용 부위",leg.side],["의족 종류",leg.custom||leg.type],["청각장애·난청 부위",hearing.side],["청각 특성",hearing.level],["청각 접근 방식",listText(hearing.supports)],["시각장애·저시력 부위",vision.side],["시각 특성",vision.level],["시각 접근 방식",listText(vision.supports)],["상호작용에서 지킬 방식",listText(body.accessibilityPreferences)],["표현 메모",body.notes]]),
+    exportSection("신체·건강·접근성",[["체형",body.bodySize],["신체 특성",listText(body.physicalTraits)],["만성질환·건강 관리",listText(body.healthConditions)],["기타 건강 상태",body.healthOther],["휠체어",wheelchair.type],["휠체어 이용 방식",wheelchair.pattern],["의수 사용 부위",arm.side],["의수 종류",arm.custom||arm.type],["의족 사용 부위",leg.side],["의족 종류",leg.custom||leg.type],["청각장애·난청 부위",hearing.side],["청각 특성",hearing.level],["청각 접근 방식",listText(hearing.supports)],["시각장애·저시력 부위",vision.side],["시각 특성",vision.level],["시각 접근 방식",listText(vision.supports)],["상호작용에서 지킬 방식",listText(body.accessibilityPreferences)],["표현 메모",body.notes]]),
     exportSection("취향 선택",[["관심사",listText(character.interests)],["취미",listText(character.hobbies)],["음식",listText(character.foodPreferences)],["좋아하는 음료",listText(character.drinks)],["좋아하는 이야기 장르",listText(character.favoriteStoryGenres)],["음악 장르",listText(character.musicGenres)],["패션 스타일",listText(character.favoriteFashionStyles)],["영상 종류",listText(character.favoriteVideoGenres)],["게임 장르",listText(character.favoriteGameGenres)],["향 계열",listText(character.favoriteScentNotes)]])
   ];
   return sections.filter(Boolean);
@@ -569,8 +569,6 @@ function applyTheme(){
 async function explicitSave(label="저장 완료"){
   save(true);
   showToast("저장되었습니다");
-  const auth=window.ParallelCityAuth;
-  if(auth?.getInfo?.().user) await auth.upload({silent:true,reason:label});
   render();
 }
 
@@ -606,12 +604,13 @@ function bind(){
   $$("[data-home-select]").forEach(el=>el.onclick=()=>{
     const homeId=el.dataset.homeSelect;
     setActiveHome(homeId);
-    const residents=state.order.filter(id=>state.characters[id]?.homeId===homeId);
+    const residents=state.order.filter(id=>state.characters[id]?.residences?.some(item=>item.homeId===homeId));
     if(residents.length&&!residents.includes(state.activeId))setActive(residents[0]);
     render();
   });
+  $("[data-add-home]")?.addEventListener("click",()=>{createHome();render();showToast("캐릭터와 별개인 새 집을 만들었습니다")});
   $("[data-home-edit]")?.addEventListener("click",async()=>{
-    const residents=state.order.filter(id=>state.characters[id]?.homeId===state.activeHomeId);
+    const residents=state.order.filter(id=>state.characters[id]?.residences?.some(item=>item.homeId===state.activeHomeId));
     if(residents.length&&!residents.includes(state.activeId))setActive(residents[0]);
     const was=state.homeEditMode;
     setHomeEditMode(!was);
@@ -705,6 +704,16 @@ function bind(){
   $$("[data-delete-pet]").forEach(el=>el.onclick=()=>{if(confirm("이 함께 사는 존재를 삭제할까요?")){deletePet(el.dataset.homeId,el.dataset.deletePet);render()}});
   $$("[data-pet-image]").forEach(el=>el.onclick=()=>pickImage(`pet${el.dataset.petImage==="icon"?"Icon":"Photo"}`,el.dataset.homeId,el.dataset.petId));
   $$("[data-home-name]").forEach(el=>el.oninput=()=>updateHome(el.dataset.homeId,{name:el.value.trim()||"이름 없는 집"}));
+  $$("[data-home-field]").forEach(el=>{
+    const apply=()=>updateHome(el.dataset.homeId,{[el.dataset.homeField]:el.value});
+    el.oninput=apply;el.onchange=apply;
+  });
+  $$("[data-delete-home]").forEach(el=>el.onclick=()=>{
+    const home=state.homes[el.dataset.deleteHome];if(!home)return;
+    if(confirm(`‘${home.name}’을 삭제할까요?\n\n이 집의 방·사진·함께 사는 존재·자동차도 함께 삭제됩니다. 연결된 캐릭터는 삭제되지 않고 다른 집 연결은 유지됩니다.`)){
+      deleteHome(home.id);render();showToast("집을 삭제하고 삭제 기록을 보관했습니다");
+    }
+  });
   $$("[data-room-name]").forEach(el=>el.oninput=()=>updateRoom(el.dataset.homeId,el.dataset.roomName,{name:el.value.trim()||"방"}));
   $$("[data-room-type]").forEach(el=>el.onchange=()=>{
     const editors=$$(".mobile-room-editors details"),openIndex=editors.indexOf(el.closest("details"));
@@ -726,11 +735,21 @@ function bind(){
   });
   $$("[data-home-resident]").forEach(el=>el.onclick=()=>{
     const homeId=el.dataset.homeId,id=el.dataset.homeResident;
-    const residents=state.order.filter(cid=>state.characters[cid].homeId===homeId);
-    const next=residents.includes(id)?residents.filter(cid=>cid!==id):[...residents,id];
-    if(!next.length){alert("집에는 최소 한 명이 거주해야 해요.");return}
-    setHomeResidents(homeId,next);render();
+    const connected=state.characters[id]?.residences?.some(item=>item.homeId===homeId);
+    connected?removeCharacterResidence(id,homeId):addCharacterResidence(id,homeId);
+    render();
   });
+  $$("[data-residence-field]").forEach(el=>{
+    const apply=()=>{updateCharacterResidence(el.dataset.characterId,el.dataset.homeId,{[el.dataset.residenceField]:el.value});if(["role","stayPattern","sleepRoomId"].includes(el.dataset.residenceField))render()};
+    el.oninput=apply;el.onchange=apply;
+  });
+  $$("[data-residence-day]").forEach(el=>el.onclick=()=>{
+    const c=state.characters[el.dataset.characterId],residence=c?.residences?.find(item=>item.homeId===el.dataset.homeId);if(!residence)return;
+    const day=Number(el.dataset.residenceDay),days=Array.isArray(residence.visitDays)?residence.visitDays:[];
+    updateCharacterResidence(c.id,residence.homeId,{visitDays:days.includes(day)?days.filter(value=>value!==day):[...days,day].sort()});
+    render();
+  });
+  $$("[data-residence-primary]").forEach(el=>el.onclick=()=>{updateCharacterResidence(el.dataset.residencePrimary,el.dataset.homeId,{isPrimary:true});render();showToast("기준 주거지로 지정했습니다")});
   $$("[data-home-town]").forEach(el=>el.onchange=()=>{updateCharacter(el.dataset.homeTown,{townId:el.value});render()});
   $$("[data-personality-field]").forEach(el=>el.onclick=()=>{updateCharacter(active().id,{[el.dataset.personalityField]:el.dataset.value});render()});
   $$("[data-personality-type]").forEach(el=>el.onclick=()=>{
@@ -1511,13 +1530,13 @@ if(!maintenanceEnabled()&&state.order.length&&localStorage.getItem("drawer-villa
   document.body.append(notice);notice.showModal();
 }
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260806bc").catch(error=>{
+  import("./auth.js?v=20260806bd").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260806bc",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260806bd",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();
