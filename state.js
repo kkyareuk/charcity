@@ -20,6 +20,43 @@ const rooms=()=>({
   bedroom:{name:"침실",type:"bedroom",image:"",furniture:["침대","옷장"]},
   study:{name:"서재·취미방",type:"study",image:"",furniture:["책상","컴퓨터"]}
 });
+const defaultBodyProfile=()=>({
+  bodySize:"설정하지 않음",
+  healthConditions:[],
+  healthOther:"",
+  wheelchair:{type:"사용하지 않음",pattern:""},
+  prostheticArm:{side:"사용하지 않음",type:"",custom:""},
+  prostheticLeg:{side:"사용하지 않음",type:"",custom:""},
+  hearing:{side:"설정하지 않음",level:"",supports:[]},
+  vision:{side:"설정하지 않음",level:"",supports:[]},
+  accessibilityPreferences:[],
+  notes:""
+});
+const normalizedBodyProfile=value=>{
+  const source=value&&typeof value==="object"&&!Array.isArray(value)?value:{};
+  const defaults=defaultBodyProfile();
+  const normalizeDevice=(key,sideDefault)=>({
+    ...defaults[key],
+    ...(source[key]&&typeof source[key]==="object"&&!Array.isArray(source[key])?source[key]:{}),
+    side:String(source[key]?.side||sideDefault),
+    type:String(source[key]?.type||defaults[key].type||""),
+    custom:String(source[key]?.custom||"").slice(0,120)
+  });
+  return{
+    ...defaults,
+    ...source,
+    bodySize:String(source.bodySize||defaults.bodySize),
+    healthConditions:Array.isArray(source.healthConditions)?[...new Set(source.healthConditions.map(String))].slice(0,12):[],
+    healthOther:String(source.healthOther||"").slice(0,200),
+    wheelchair:normalizeDevice("wheelchair","사용하지 않음"),
+    prostheticArm:normalizeDevice("prostheticArm","사용하지 않음"),
+    prostheticLeg:normalizeDevice("prostheticLeg","사용하지 않음"),
+    hearing:{...normalizeDevice("hearing","설정하지 않음"),supports:Array.isArray(source.hearing?.supports)?[...new Set(source.hearing.supports.map(String))].slice(0,8):[]},
+    vision:{...normalizeDevice("vision","설정하지 않음"),supports:Array.isArray(source.vision?.supports)?[...new Set(source.vision.supports.map(String))].slice(0,8):[]},
+    accessibilityPreferences:Array.isArray(source.accessibilityPreferences)?[...new Set(source.accessibilityPreferences.map(String))].slice(0,10):[],
+    notes:String(source.notes||"").slice(0,600)
+  };
+};
 const ROOM_FURNITURE={
   living:["소파","TV","책장","오디오","안마의자","게임기","캣타워"],
   kitchen:["냉장고","조리대","식탁","오븐","커피머신","식기세척기"],
@@ -318,8 +355,9 @@ function normalizeHomes(x){
     c.townId=x.towns.some(t=>t.id===c.townId)?c.townId:x.towns[0].id;
     c.days=c.days&&typeof c.days==="object"&&!Array.isArray(c.days)?c.days:{};
     c.days=Object.fromEntries(Object.entries(c.days).filter(([,day])=>day&&typeof day==="object"&&!Array.isArray(day)).map(([key,day])=>{
-      day.signature=typeof day.signature==="string"?day.signature:"";
-      day.engineVersion=String(day.engineVersion||"");
+       day.signature=typeof day.signature==="string"?day.signature:"";
+       day.engineVersion=String(day.engineVersion||"");
+       day.settingsAppliedAt=Number.isFinite(Number(day.settingsAppliedAt))?Number(day.settingsAppliedAt):0;
       day.entries=Array.isArray(day.entries)?day.entries.filter(item=>item&&typeof item==="object"&&!Array.isArray(item)).map(item=>({
         ...item,
         minute:Number.isFinite(Number(item.minute))?Number(item.minute):0,
@@ -340,9 +378,12 @@ function normalizeHomes(x){
     c.ageGroup=c.ageGroup||"성인";
     c.personalityChoices=c.personalityChoices&&typeof c.personalityChoices==="object"?c.personalityChoices:{};
     c.personalityTypes=Array.isArray(c.personalityTypes)?[...new Set(c.personalityTypes.map(String))].slice(0,4):[];
-    c.characterTraits=Array.isArray(c.characterTraits)?[...new Set(c.characterTraits.map(String))].slice(0,8):[];
-    c.traitExpressions=Array.isArray(c.traitExpressions)?[...new Set(c.traitExpressions.map(String))].slice(0,8):[];
-    c.traitNotes=String(c.traitNotes||"").slice(0,1200);
+     c.characterTraits=Array.isArray(c.characterTraits)?[...new Set(c.characterTraits.map(String))].slice(0,8):[];
+     c.traitExpressions=Array.isArray(c.traitExpressions)?[...new Set(c.traitExpressions.map(String))].slice(0,8):[];
+     c.traitNotes=String(c.traitNotes||"").slice(0,1200);
+     c.traitNotesInScripts=Boolean(c.traitNotesInScripts);
+     c.bodyProfile=normalizedBodyProfile(c.bodyProfile);
+     c.timelineResetAt=Number.isFinite(Number(c.timelineResetAt))?Number(c.timelineResetAt):0;
     c.neatness=c.neatness||"보통";
     c.interference=c.interference==="철저히 선을 지킴"?"요청할 때만 도움":c.interference==="컨트롤프릭"?"통제광":c.interference||"적당히 관여";
     c.conflictStyle=c.conflictStyle||"대화로 해결";
@@ -439,7 +480,7 @@ export function createCharacter(limit=5){
   if(state.order.length>=Math.max(1,Number(limit)||5))return null;
   const id=uid();
   state.deletedCharacterIds=(state.deletedCharacterIds||[]).filter(value=>value!==id);
-  state.characters[id]={id,name:"새 캐릭터",createdAt:Date.now(),ageGroup:"성인",gender:"설정하지 않음",attractedGenders:[],touchReaction:"상황에 따라 자연스럽게 받아들임",appearanceLevel:"보통",appearanceInterest:"보통",appearanceTags:[],attractionTraits:[],personalityTypes:[],characterTraits:[],traitExpressions:[],traitNotes:"",job:"무직",jobTitle:"",workplaceId:"",birthday:"",photo:"",icon:"",wake:"07:30",wakeHabit:"알람을 듣고 천천히 일어남",sleep:"00:30",sleepHabit:"이불을 단정히 덮고 잠",income:"필요한 만큼 소비",wealth:"평범한 형편",spiceTolerance:2,sweetPreference:2,socialEnergy:3,sensingIntuition:3,thinkingFeeling:3,perceivingJudging:3,fashionSense:"보통",humorStyle:"건조한 농담만 함",emotionalExpression:"상황에 따라 표현함",impulseControl:"가끔 욱하지만 멈춤",savedOutfits:[],theme:{primary:"#176b60",secondary:"#6fd0ae",gradient:true},tastes:[],interests:[],hobbies:[],musicGenres:[],foodTypes:[],foodPreferences:[],drinks:[],favorites:{},inventory:{},homeId:id};
+  state.characters[id]={id,name:"새 캐릭터",createdAt:Date.now(),ageGroup:"성인",gender:"설정하지 않음",attractedGenders:[],touchReaction:"상황에 따라 자연스럽게 받아들임",appearanceLevel:"보통",appearanceInterest:"보통",appearanceTags:[],attractionTraits:[],personalityTypes:[],characterTraits:[],traitExpressions:[],traitNotes:"",traitNotesInScripts:false,bodyProfile:defaultBodyProfile(),timelineResetAt:0,job:"무직",jobTitle:"",workplaceId:"",birthday:"",photo:"",icon:"",wake:"07:30",wakeHabit:"알람을 듣고 천천히 일어남",sleep:"00:30",sleepHabit:"이불을 단정히 덮고 잠",income:"필요한 만큼 소비",wealth:"평범한 형편",spiceTolerance:2,sweetPreference:2,socialEnergy:3,sensingIntuition:3,thinkingFeeling:3,perceivingJudging:3,fashionSense:"보통",humorStyle:"건조한 농담만 함",emotionalExpression:"상황에 따라 표현함",impulseControl:"가끔 욱하지만 멈춤",savedOutfits:[],theme:{primary:"#176b60",secondary:"#6fd0ae",gradient:true},tastes:[],interests:[],hobbies:[],musicGenres:[],foodTypes:[],foodPreferences:[],drinks:[],favorites:{},inventory:{},homeId:id};
   state.order.push(id);
   state.characters[id].townId=state.activeTownId;
   state.homes[id]={id,name:"새 캐릭터의 집",image:"",rooms:rooms(),pets:[],cleanliness:100};
@@ -478,6 +519,8 @@ export function deleteCharacter(id){
 export function updateCharacter(id,patch,persist=true){
   const c=state.characters[id];if(!c)return;
   Object.assign(c,patch);
+  const simulationFields=new Set(["ageGroup","wake","wakeHabit","sleep","sleepHabit","job","jobTitle","workplaceId","townId","homeId","sleepRoomId","personalityTypes","characterTraits","traitExpressions","traitNotes","traitNotesInScripts","bodyProfile","hobbies","interests","inventory","foodPreferences","favoriteScentNotes","favoriteStoryGenres","favoriteVideoGenres","favoriteGameGenres","favoriteFashionStyles","musicGenres","socialStyle","perceptionStyle","decisionStyle","planningStyle","activityTempo","neatness","interference","conflictStyle","affectionStyle","energyRhythm","humorStyle","emotionalExpression","impulseControl"]);
+  if(Object.keys(patch).some(key=>simulationFields.has(key)))c.timelineResetAt=Date.now();
   if(patch.townId){
     state.order.forEach(otherId=>{const other=state.characters[otherId];if(other&&other.id!==id&&other.homeId===c.homeId)other.townId=patch.townId});
   }
@@ -487,19 +530,20 @@ export function addRoutine(characterId){
   if(!state.characters[characterId])return;
   state.routines[characterId]=Array.isArray(state.routines[characterId])?state.routines[characterId]:[];
   const routine={id:uid(),day:1,start:"09:00",end:"10:00",type:"개인 일정",title:"새 일정",placeId:"",withIds:[],notes:""};
-  state.routines[characterId].push(routine);save(true);return routine.id;
+  state.routines[characterId].push(routine);state.characters[characterId].timelineResetAt=Date.now();save(true);return routine.id;
 }
 export function updateRoutine(characterId,routineId,patch){
   const routine=state.routines[characterId]?.find(item=>item.id===routineId);if(!routine)return;
-  Object.assign(routine,patch);save(true);
+  Object.assign(routine,patch);if(state.characters[characterId])state.characters[characterId].timelineResetAt=Date.now();save(true);
 }
 export function deleteRoutine(characterId,routineId){
-  state.routines[characterId]=(state.routines[characterId]||[]).filter(item=>item.id!==routineId);save(true);
+  state.routines[characterId]=(state.routines[characterId]||[]).filter(item=>item.id!==routineId);if(state.characters[characterId])state.characters[characterId].timelineResetAt=Date.now();save(true);
 }
 export function toggleChip(id,key,value){
   const c=state.characters[id];
   const own=Array.isArray(c[key])?[...c[key]]:[];
   c[key]=own.includes(value)?own.filter(x=>x!==value):[...own,value];
+  c.timelineResetAt=Date.now();
   save(true);
 }
 export function setCharacterImage(id,type,data){state.characters[id][type]=data;save(true)}

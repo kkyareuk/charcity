@@ -1,5 +1,5 @@
-import {state,active,characterViewFor} from "./state.js?v=20260806ay";
-import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806ay";
+import {state,active,characterViewFor} from "./state.js?v=20260806bb";
+import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806bb";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const hasBatchim=value=>{
@@ -446,8 +446,8 @@ function personalityTypeChoice(c){
   const selected=new Set(c.personalityTypes||[]);
   return `<section class="chips personality-choice personality-type-choice"><h3>이 캐릭터의 전체적인 유형 · 최대 4개</h3><small>여기서 고른 유형이 혼자 하는 행동과 말투의 기본이 되고, 관계 설정은 그다음에 상대별 차이를 더해요.</small><div>${PERSONALITY_TYPES.map(value=>`<button type="button" data-personality-type="${value}" class="${selected.has(value)?"on":""}">${value}</button>`).join("")}</div></section>`;
 }
-const CHARACTER_TRAITS=["ADHD 설정","자폐 스펙트럼 설정","복수 자아·다중 정체성 설정","해리 경험","불안 관련 특성","강박 관련 특성","감각 처리 특성","틱·투렛 관련 특성","기타 직접 설정"];
-const TRAIT_EXPRESSIONS=["주의가 쉽게 전환됨","관심 대상에 과집중함","생각이 떠오르면 바로 시작함","감각 자극에 민감함","익숙한 순서가 바뀌면 힘듦","사회적 신호를 해석하는 데 시간이 필요함","기억이 비는 때가 있음","자아마다 말투·선호가 다름"];
+const CHARACTER_TRAITS=["ADHD 설정","자폐 스펙트럼 설정","복수 자아·다중 정체성 설정","해리 경험","불안 관련 특성","강박 관련 특성","감각 처리 특성","틱·투렛 관련 특성","사이코패스 성향 설정 · 비임상","간헐적 폭발 장애 설정","기타 직접 설정"];
+const TRAIT_EXPRESSIONS=["주의가 쉽게 전환됨","관심 대상에 과집중함","생각이 떠오르면 바로 시작함","감각 자극에 민감함","익숙한 순서가 바뀌면 힘듦","사회적 신호를 해석하는 데 시간이 필요함","기억이 비는 때가 있음","자아마다 말투·선호가 다름","타인의 감정을 직관보다 관찰과 추론으로 파악함","죄책감이나 공감이 낮게 표현됨","감정이 급격히 치솟는 때가 있음","격해지면 먼저 거리를 두고 진정함"];
 function characterTraitChoice(c){
   const traits=new Set(c.characterTraits||[]),expressions=new Set(c.traitExpressions||[]);
   return `<section class="setting-card character-trait-settings">
@@ -455,8 +455,51 @@ function characterTraitChoice(c){
     <p>진단명이나 설정 라벨만으로 행동을 추측하지 않아요. 먼저 설정을 표시하고, 실제 생활 장면에 나타낼 방식은 아래에서 따로 골라 주세요.</p>
     <fieldset><legend>설정 라벨 · 최대 8개</legend><div class="chips">${CHARACTER_TRAITS.map(value=>`<button type="button" data-character-trait="${value}" class="${traits.has(value)?"on":""}">${value}</button>`).join("")}</div></fieldset>
     <fieldset><legend>실제 장면에 반영할 표현 · 최대 8개</legend><div class="chips">${TRAIT_EXPRESSIONS.map(value=>`<button type="button" data-trait-expression="${value}" class="${expressions.has(value)?"on":""}">${value}</button>`).join("")}</div><small>예: ADHD 설정을 골라도 ‘주의가 쉽게 전환됨’을 별도로 고르지 않으면 모든 행동을 산만하게 만들지 않습니다.</small></fieldset>
-    <label>직접 설정한 표현 메모<textarea data-trait-notes maxlength="1200" rows="5" placeholder="예: 자아 이름, 각 자아의 말투·선호, 전환을 알아차리는 정도, 피하고 싶은 묘사">${esc(c.traitNotes||"")}</textarea></label>
-    <small>의학적 진단 도구가 아니라 캐릭터 설정용 항목입니다. 실제 사람을 진단하거나 특성을 단정하지 않습니다.</small>
+    <label>직접 설정한 표현 메모<textarea data-trait-notes maxlength="1200" rows="5" placeholder="한 줄에 한 문장씩 적어 주세요. 예: 대화가 격해지면 창가로 물러나 호흡을 고른다.">${esc(c.traitNotes||"")}</textarea></label>
+    <label class="check trait-note-switch"><input type="checkbox" data-trait-notes-in-scripts ${c.traitNotesInScripts?"checked":""}> 이 메모의 문장을 생활 로그에 직접 반영</label>
+    <small>이 스위치를 켜면 메모가 장면 문구에 그대로 나올 수 있어요. 라벨만 고른 상태에서는 행동을 자동 추측하지 않습니다. 사이코패스 성향이나 간헐적 폭발 장애 설정도 폭력·범죄·가해 행동과 자동 연결하지 않으며, 실제 공격 행동은 별도의 관계 안전 설정이 허용한 범위를 넘지 않습니다.</small>
+  </section>`;
+}
+const HEALTH_CONDITIONS=["당뇨병","고혈압","고지혈증","심혈관 질환","천식","관절 질환","만성 통증","신장 질환","기타 건강 상태"];
+const ACCESSIBILITY_PREFERENCES=["도움 전에 먼저 물어보기","보조기기 함부로 만지지 않기","접근 가능한 동선 먼저 확인","쉬는 시간을 충분히 두기","조용한 자리 선호","문자·시각 정보 함께 제공","말로 주변 정보 설명","직접 선택하고 결정할 시간 주기"];
+function profileSelect(label,path,options,current){
+  return `<label>${label}<select data-body-field="${path}">${options.map(value=>`<option value="${esc(value)}" ${value===current?"selected":""}>${esc(value)}</option>`).join("")}</select></label>`;
+}
+function profileMultiChoice(title,key,options,selected){
+  const values=new Set(selected||[]);
+  return `<fieldset><legend>${title}</legend><div class="chips">${options.map(value=>`<button type="button" data-body-list="${key}" data-value="${esc(value)}" class="${values.has(value)?"on":""}">${esc(value)}</button>`).join("")}</div></fieldset>`;
+}
+function healthAccessibilitySettings(c){
+  const p=c.bodyProfile||{},wheelchair=p.wheelchair||{},arm=p.prostheticArm||{},leg=p.prostheticLeg||{},hearing=p.hearing||{},vision=p.vision||{};
+  const sideOptions=["사용하지 않음","왼쪽","오른쪽","양쪽"];
+  const sensorySides=["설정하지 않음","왼쪽","오른쪽","양쪽"];
+  return `<section class="setting-card health-accessibility-settings">
+    <h2>신체·건강·접근성 설정 · 선택 사항</h2>
+    <div class="representation-warning"><b>표현 안전 안내</b><p>이 항목은 진단이나 의학 조언이 아닙니다. 장애·질환·체형을 무능, 비극, 웃음거리, 영감의 소재, 폭력성과 연결하지 않아요. 생활 장면에는 당사자가 직접 고른 보조기기·접근성·건강 관리 방식만 가끔 반영하며, 도움은 먼저 묻고 동의받는 방식으로 표현합니다. 사람마다 선호하는 말과 경험이 다르므로 원하지 않는 항목은 고르지 않아도 됩니다.</p></div>
+    <div class="health-field-grid">
+      ${profileSelect("체형", "bodySize",["설정하지 않음","비만 체형"],p.bodySize||"설정하지 않음")}
+      ${profileSelect("휠체어", "wheelchair.type",["사용하지 않음","수동 휠체어","전동 휠체어","스포츠용 휠체어","기타 휠체어"],wheelchair.type||"사용하지 않음")}
+      ${profileSelect("휠체어 이용 방식", "wheelchair.pattern",["","항상 이용","장거리·외출 시 이용","피로하거나 통증이 있을 때 이용","활동에 따라 바꾸어 이용"],wheelchair.pattern||"")}
+      ${profileSelect("의수 사용 부위", "prostheticArm.side",sideOptions,arm.side||"사용하지 않음")}
+      ${profileSelect("의수 종류", "prostheticArm.type",["","미관용 의수","작업용 의수","바디파워 의수","근전동 의수","스포츠·활동용 의수","기타 의수"],arm.type||"")}
+      ${profileSelect("의족 사용 부위", "prostheticLeg.side",sideOptions,leg.side||"사용하지 않음")}
+      ${profileSelect("의족 종류", "prostheticLeg.type",["","일상 보행용 의족","고활동형 의족","스포츠용 의족","방수용 의족","미관용 의족","기타 의족"],leg.type||"")}
+      ${profileSelect("청각장애·난청 부위", "hearing.side",sensorySides,hearing.side||"설정하지 않음")}
+      ${profileSelect("청각 특성", "hearing.level",["","난청","농·청각장애","상황에 따라 들리는 정도가 다름","기타"],hearing.level||"")}
+      ${profileSelect("시각장애·저시력 부위", "vision.side",sensorySides,vision.side||"설정하지 않음")}
+      ${profileSelect("시각 특성", "vision.level",["","저시력","맹·시각장애","시야 범위가 제한됨","빛에 민감함","기타"],vision.level||"")}
+    </div>
+    ${profileMultiChoice("만성질환·건강 관리", "healthConditions",HEALTH_CONDITIONS,p.healthConditions)}
+    ${profileMultiChoice("청각 접근 방식", "hearing.supports",["보청기","인공와우","수어","문자 대화","입모양이 보이는 대화","자막","조용한 환경"],hearing.supports)}
+    ${profileMultiChoice("시각 접근 방식", "vision.supports",["흰지팡이","안내견","화면 읽기","확대·고대비","음성 안내","촉각 표식","동행 안내"],vision.supports)}
+    ${profileMultiChoice("상호작용에서 지킬 방식", "accessibilityPreferences",ACCESSIBILITY_PREFERENCES,p.accessibilityPreferences)}
+    <div class="health-field-grid">
+      <label>기타 건강 상태<input data-body-field="healthOther" maxlength="200" value="${esc(p.healthOther||"")}" placeholder="원할 때만 직접 입력"></label>
+      <label>의수 종류 직접 입력<input data-body-field="prostheticArm.custom" maxlength="120" value="${esc(arm.custom||"")}" placeholder="기타 의수를 골랐을 때"></label>
+      <label>의족 종류 직접 입력<input data-body-field="prostheticLeg.custom" maxlength="120" value="${esc(leg.custom||"")}" placeholder="기타 의족을 골랐을 때"></label>
+    </div>
+    <label>접근성 참고 메모 · 설정표용<textarea data-body-field="notes" maxlength="600" rows="4" placeholder="예: 안내견에게는 일하는 중 말을 걸지 않기, 도움 전에 반드시 먼저 묻기">${esc(p.notes||"")}</textarea></label>
+    <small>건강 상태를 고르더라도 매 장면마다 언급하지 않습니다. 치료법·복용량·식단을 자동 처방하지 않고, 평범한 생활과 선택한 접근성 방식 안에서만 드물게 나타납니다. 이 참고 메모는 민감한 내용이 그대로 노출되지 않도록 생활 로그에는 자동 삽입하지 않고 설정표에만 보관합니다.</small>
   </section>`;
 }
 function character(){
@@ -474,7 +517,7 @@ function character(){
   const storyGenres=["로맨스","코미디","액션","판타지","SF","스릴러","공포","미스터리","범죄","드라마","시대극","일상","청춘","가족","모험"];
   const taste=`<h2>${esc(c.name)}의 취향 선택</h2><p>‘좋아하는 장르’는 책·영화·드라마·애니메이션 등 이야기 콘텐츠 전체에 공통으로 반영돼요.</p>${chips("관심사",INTERESTS,c.interests||[],"interests")}${chips("취미",HOBBIES,c.hobbies||[],"hobbies")}${chips("음식",FOOD_PREFERENCES,c.foodPreferences||[],"foodPreferences")}${chips("좋아하는 음료",DRINKS,c.drinks||[],"drinks")}${chips("좋아하는 장르 · 이야기 전체",storyGenres,c.favoriteStoryGenres||[],"favoriteStoryGenres")}${chips("좋아하는 음악 장르",MUSIC,c.musicGenres||[],"musicGenres")}${chips("좋아하는 패션 스타일",DETAIL_OPTIONS.fashion,c.favoriteFashionStyles||[],"favoriteFashionStyles")}${chips("좋아하는 영상 종류",videoFormats,c.favoriteVideoGenres||[],"favoriteVideoGenres")}${chips("좋아하는 게임 장르",gameGenres,c.favoriteGameGenres||[],"favoriteGameGenres")}${chips("좋아하는 향 계열",PERFUME_NOTES,c.favoriteScentNotes||[],"favoriteScentNotes")}`;
   const personality=`<h2>${esc(c.name)}의 성격</h2><p>전체 유형을 먼저 고르고, 아래에서 세부 성향을 조절해 주세요.</p>${personalityTypeChoice(c)}${personalityChoice(c,"사람과 어울리는 방식","socialStyle",["혼자가 편함","낯을 가림","조용히 어울림","먼저 다가감","무리의 중심"])}${personalityChoice(c,"정보를 받아들이는 방식","perceptionStyle",["현실과 경험 중시","구체적인 편","균형형","가능성 중시","직관과 상상 중시"])}${personalityChoice(c,"판단하는 방식","decisionStyle",["논리 우선","이성적인 편","균형형","마음을 살핌","공감 우선"])}${personalityChoice(c,"일정을 다루는 방식","planningStyle",["무계획","즉흥적","유연한 편","상황에 따라","미리 정리함","계획적","강박적으로 계획함"])}${personalityChoice(c,"행동을 전환하는 방식","activityTempo",["한 가지씩 차분히","잠깐 쉬고 다음 일","상황에 따라","생각나면 바로 움직임","부산스럽게 여러 일을 오감","허둥대며 주의가 자주 옮겨감"],"활동적인 정도와 별개예요. 뒤쪽일수록 하던 중 다른 일이 눈에 들어오는 행동이 늘어요.")}${personalityChoice(c,"깔끔한 정도","neatness",["어질러도 편함","조금 느슨함","보통","정돈을 좋아함","흐트러짐을 못 참음","결벽에 가까움"])}${personalityChoice(c,"옷을 입는 감각","fashionSense",["패션에 전혀 관심 없음","조합을 자주 틀림","무난하게 입음","센스 있게 입음","스타일링에 능숙함"],"자동 코디의 색 조합·상황 적합성·액세서리 사용에 반영돼요.")}${personalityChoice(c,"남에게 관여하는 정도","interference",["방관자","요청할 때만 도움","적당히 관여","챙기고 확인함","강하게 간섭함","컨트롤프릭"],"방관자는 웬만한 일에 끼어들지 않고, 컨트롤프릭은 상대의 일정과 행동까지 통제하려 해 갈등 가능성이 커져요.")}${personalityChoice(c,"갈등 대응","conflictStyle",["피하는 편","시간을 두고 말함","대화로 해결","바로 따짐","끝까지 결론을 냄"])}${personalityChoice(c,"애정 표현","affectionStyle",["표현이 서툼","조용히 곁에 있음","말로 표현","행동으로 표현","적극적으로 챙김"])}${personalityChoice(c,"생활 에너지","energyRhythm",["집에서 충전","느긋한 편","상황에 따라","활동적인 편","가만히 못 있음"])}`;
-  const profileWithLicense=`<section class="profile-license">${townAssignment(c)}${profile}<label class="check"><input type="checkbox" data-character-check="${c.id}" data-field="driverLicense" ${c.driverLicense?"checked":""}> 운전면허 있음</label></section>`;
+  const profileWithLicense=`<section class="profile-license">${townAssignment(c)}${profile}<label class="check"><input type="checkbox" data-character-check="${c.id}" data-field="driverLicense" ${c.driverLicense?"checked":""}> 운전면허 있음</label>${healthAccessibilitySettings(c)}</section>`;
   const personalityExtras=`<section class="personality-extra">${personalityChoice(c,"유머·장난 성향","humorStyle",["장난을 거의 하지 않음","건조한 농담만 함","가끔 장난을 즐김","장난을 즐김","유머로 분위기를 이끎"],"웃음·농담·장난 장면의 빈도와 표현을 정해요.")}${personalityChoice(c,"감정 표현의 크기","emotionalExpression",["표정 변화가 거의 없음","감정을 잘 드러내지 않음","상황에 따라 표현함","표현이 풍부함","감정이 바로 드러남"],"같은 감정이라도 표정과 몸짓으로 얼마나 드러나는지 정해요.")}${personalityChoice(c,"충동을 참는 정도","impulseControl",["매우 잘 참음","대체로 참음","가끔 욱하지만 멈춤","쉽게 욱함","거의 참지 않음"],"공격 충동이 있어도 이 성향과 실제 행동 단계가 허용해야 행동으로 나와요.")}${characterTraitChoice(c)}</section>`;
   const pane=state.characterPane==="personality"?`${personality}${personalityExtras}`:state.characterPane==="taste"?taste:state.characterPane==="worldTaste"?worldTaste:profileWithLicense;
   const limit=characterLimit();

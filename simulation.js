@@ -1,4 +1,4 @@
-import {state,save,characterViewFor} from "./state.js?v=20260806ay";
+import {state,save,characterViewFor} from "./state.js?v=20260806bb";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -118,10 +118,99 @@ const related=c=>{
 };
 const preferredRelation=c=>related(c).sort((a,b)=>(relationPriority[b.r.type]||0)-(relationPriority[a.r.type]||0)||(b.r.intimacy||0)-(a.r.intimacy||0))[0];
 
+function selectedBodyVariants(c,socialScene){
+  const p=c.bodyProfile||{},variants=[];
+  const sideText=value=>value==="양쪽"?"양쪽":value==="왼쪽"?"왼쪽":value==="오른쪽"?"오른쪽":"";
+  const wheelchair=p.wheelchair||{},arm=p.prostheticArm||{},leg=p.prostheticLeg||{},hearing=p.hearing||{},vision=p.vision||{};
+  if(wheelchair.type&&wheelchair.type!=="사용하지 않음"){
+    variants.push(
+      "휠체어로 편안하게 지나갈 수 있는 동선과 필요한 회전 공간을 먼저 확인한 뒤 자기 속도로 움직였어요.",
+      wheelchair.type==="전동 휠체어"?"전동 휠체어의 배터리 상태와 조작부를 확인하고 오늘 일정에 맞게 준비했어요.":"바퀴와 브레이크 상태를 가볍게 확인하고 익숙한 자세로 일상을 이어 갔어요."
+    );
+    if(socialScene)variants.push("함께 있는 사람은 휠체어나 손잡이에 먼저 손대지 않고 도움이 필요한지 물은 뒤 대답을 기다렸어요.","일행은 계단 없는 동선과 들어가기 편한 자리를 함께 확인하되 최종 선택은 당사자에게 맡겼어요.");
+  }
+  if(arm.side&&arm.side!=="사용하지 않음"){
+    const label=`${sideText(arm.side)} ${arm.custom||arm.type||"의수"}`.trim();
+    variants.push(`${label}의 착용감과 연결 부위를 확인하고 지금 할 일에 편한 방식으로 조절했어요.`,`${label}에 맞는 익숙한 손동작으로 필요한 물건을 안정적으로 다뤘어요.`);
+    if(socialScene)variants.push("상대는 의수에 허락 없이 손대거나 대신 해내려 하지 않고 필요한 방식이 있는지 먼저 물었어요.");
+  }
+  if(leg.side&&leg.side!=="사용하지 않음"){
+    const label=`${sideText(leg.side)} ${leg.custom||leg.type||"의족"}`.trim();
+    variants.push(`${label}의 소켓과 착용 상태를 살피고 몸에 무리가 없는 속도로 움직였어요.`,`${label}으로 익숙한 균형을 잡아 자기가 고른 동선을 자연스럽게 이동했어요.`);
+    if(socialScene)variants.push("함께 걷는 사람은 속도를 임의로 정하지 않고 어느 길이 편한지 물어 나란히 맞췄어요.");
+  }
+  if(hearing.side&&hearing.side!=="설정하지 않음"){
+    const supports=Array.isArray(hearing.supports)?hearing.supports:[];
+    if(supports.includes("자막"))variants.push("소리를 놓쳐도 내용을 따라갈 수 있도록 자막을 켜고 편안하게 장면을 즐겼어요.");
+    if(supports.includes("보청기")||supports.includes("인공와우"))variants.push(`${supports.includes("보청기")?"보청기":"인공와우"}의 상태를 확인하고 주변 소리가 과하지 않은 자리를 골랐어요.`);
+    if(supports.includes("수어"))variants.push("말뿐 아니라 익숙한 수어로 뜻과 감정을 자연스럽게 주고받았어요.");
+    if(supports.includes("문자 대화"))variants.push("중요한 내용은 문자로 함께 확인해 빠뜨리는 부분 없이 대화를 이어 갔어요.");
+    if(socialScene)variants.push("상대는 얼굴과 입모양이 잘 보이는 위치에서 평소 속도로 말하고, 알아들었는지 재촉하지 않았어요.","말이 겹치지 않게 한 사람씩 이야기하고 필요한 내용은 문자나 화면으로 함께 보여 줬어요.");
+  }
+  if(vision.side&&vision.side!=="설정하지 않음"){
+    const supports=Array.isArray(vision.supports)?vision.supports:[];
+    if(supports.includes("화면 읽기"))variants.push("화면 읽기 기능으로 필요한 정보를 빠르게 확인하고 익숙한 순서대로 조작했어요.");
+    if(supports.includes("확대·고대비"))variants.push("글자 크기와 대비를 자기 눈에 편하게 맞춘 뒤 내용을 차분히 살폈어요.");
+    if(supports.includes("흰지팡이"))variants.push("흰지팡이로 앞의 지형과 경계를 확인하며 익숙한 속도로 이동했어요.");
+    if(supports.includes("안내견"))variants.push("안내견과 호흡을 맞춰 필요한 곳으로 이동하고, 쉴 때에는 방해받지 않는 자리를 마련했어요.");
+    if(socialScene)variants.push("상대는 갑자기 팔을 잡지 않고 안내가 필요한지 먼저 물은 뒤 원하는 방식대로 길과 주변 정보를 설명했어요.","함께 있는 사람은 물건을 임의로 옮기지 않고 달라진 위치가 있으면 구체적으로 알려 줬어요.");
+  }
+  const conditions=Array.isArray(p.healthConditions)?p.healthConditions:[];
+  if(conditions.includes("당뇨병"))variants.push("오늘 일정에 필요한 측정 도구와 비상용 간식을 챙겼는지 확인하고 자기 관리 계획에 맞춰 움직였어요.","식사와 휴식 시각을 스스로 정한 관리 계획에 맞게 확인하되 하던 일의 즐거움도 놓치지 않았어요.");
+  if(conditions.some(value=>["천식","심혈관 질환","관절 질환","만성 통증","신장 질환"].includes(value)))variants.push("몸의 신호를 무시하지 않고 필요한 때 잠깐 쉬면서 자기에게 맞는 속도로 일상을 이어 갔어요.","무리해서 증명하려 하지 않고 오늘 컨디션에 맞게 순서와 강도를 스스로 조절했어요.");
+  if(p.bodySize==="비만 체형")variants.push("자기 몸이 편안한 의자와 움직이기 좋은 공간을 자연스럽게 골라 하던 일에 집중했어요.");
+  const preferences=Array.isArray(p.accessibilityPreferences)?p.accessibilityPreferences:[];
+  if(socialScene&&preferences.includes("도움 전에 먼저 물어보기"))variants.push("상대는 필요를 짐작해 대신 처리하지 않고 도움이 필요한지 먼저 물은 뒤 선택을 존중했어요.");
+  if(socialScene&&preferences.includes("보조기기 함부로 만지지 않기"))variants.push("일행은 보조기기를 몸의 일부이자 개인 물건으로 존중해 허락 없이 만지거나 옮기지 않았어요.");
+  if(preferences.includes("쉬는 시간을 충분히 두기"))variants.push("정한 중간 휴식 시간을 지켜 몸을 가다듬은 뒤 다음 순서를 이어 갔어요.");
+  return variants;
+}
+function directTraitLines(c){
+  if(!c.traitNotesInScripts)return[];
+  return String(c.traitNotes||"").split(/\r?\n+/).map(value=>value.trim()).filter(Boolean).slice(0,12).map(value=>{
+    const clean=value.replace(/\$\{(?:name|actor|character|c\.name)\}/g,c.name||"캐릭터").replace(/\$\{(?:other|target)(?:\.name)?\}/g,"상대").replace(/\$\{[^}]+\}/g,"").replace(/[<>]/g,"").slice(0,140).trim();
+    return /[.!?。요다음]$/.test(clean)?clean:`${clean}.`;
+  }).filter(Boolean);
+}
+function respectfulAccessibilityFor(target,seed=""){
+  const p=target?.bodyProfile||{},variants=[],wheelchair=p.wheelchair||{},arm=p.prostheticArm||{},leg=p.prostheticLeg||{},hearing=p.hearing||{},vision=p.vision||{};
+  if(wheelchair.type&&wheelchair.type!=="사용하지 않음")variants.push(
+    " 이동을 도울 필요가 있는지 먼저 물었고, 휠체어나 손잡이에는 허락 없이 손대지 않았어요.",
+    " 계단 없는 동선과 출입구를 함께 확인한 뒤 어느 길과 자리를 쓸지는 상대가 직접 고르게 했어요.",
+    " 서로의 눈높이가 편안하도록 자리를 맞췄지만 휠체어 이용을 대화의 특별한 소재로 만들지는 않았어요."
+  );
+  if(arm.side&&arm.side!=="사용하지 않음")variants.push(
+    " 의수나 몸에 허락 없이 손대지 않고, 필요한 도구와 방식이 있는지 먼저 물었어요.",
+    " 상대가 익숙한 방식으로 해낼 시간을 충분히 두고 먼저 대신 처리하려 들지 않았어요."
+  );
+  if(leg.side&&leg.side!=="사용하지 않음")variants.push(
+    " 걷는 속도와 쉬는 시점을 임의로 정하지 않고 상대가 편한 동선을 물어 나란히 맞췄어요.",
+    " 의족을 빤히 보거나 이유를 캐묻지 않고 지금 함께하는 일과 상대의 선택에 집중했어요."
+  );
+  if(hearing.side&&hearing.side!=="설정하지 않음"){
+    const supports=Array.isArray(hearing.supports)?hearing.supports:[];
+    variants.push(" 얼굴과 입모양이 잘 보이도록 자리를 잡고 말을 과장하거나 재촉하지 않은 채 대화를 이어 갔어요.");
+    if(supports.includes("문자 대화")||supports.includes("문자·시각 정보 함께 제공"))variants.push(" 중요한 내용은 문자로도 함께 보여 주고 상대가 확인할 시간을 기다렸어요.");
+    if(supports.includes("수어"))variants.push(" 상대가 고른 수어와 말의 방식을 존중하며 자연스럽게 대화를 이어 갔어요.");
+  }
+  if(vision.side&&vision.side!=="설정하지 않음"){
+    variants.push(
+      " 갑자기 팔을 잡아끌지 않고 안내가 필요한지 먼저 물은 뒤 원하는 방식대로 주변과 방향을 구체적으로 설명했어요.",
+      " 물건의 위치를 임의로 바꾸지 않고 달라진 것이 있으면 방향과 거리를 구체적으로 알려 줬어요."
+    );
+    if((vision.supports||[]).includes("안내견"))variants.push(" 일하는 안내견에게 말을 걸거나 만지지 않고 상대와 직접 대화했어요.");
+  }
+  const preferences=Array.isArray(p.accessibilityPreferences)?p.accessibilityPreferences:[];
+  if(preferences.includes("직접 선택하고 결정할 시간 주기"))variants.push(" 빨리 결정하라고 재촉하지 않고 상대가 정보를 확인하고 직접 선택할 시간을 충분히 기다렸어요.");
+  if(preferences.includes("조용한 자리 선호"))variants.push(" 소리가 덜 겹치는 자리를 함께 찾고 대화를 이어 가기 편한 환경인지 확인했어요.");
+  if(preferences.includes("말로 주변 정보 설명"))variants.push(" 눈앞에서 달라진 위치와 주변 상황을 짧고 구체적인 말로 함께 알려 줬어요.");
+  if((p.healthConditions||[]).length)variants.push(" 몸 상태를 멋대로 판단하거나 치료법을 권하지 않고, 지금 필요한 속도와 휴식이 있는지만 물었어요.");
+  return variants.length?variants[hash(`${target?.id||""}:${seed}:accessibility`)%variants.length]:"";
+}
 function personalityFlavor(c,desc,seed=""){
   const variants=[];
   const priorityVariants=[];
-  const socialScene=/함께|상대|사람|대화|인사|말을|질문|동거인|친구|연인|부부|와 |과 |에게/.test(desc);
+  const socialScene=/함께|상대|사람|대화|인사|말을|질문|동거인|친구|연인|부부|에게/.test(desc);
   const reasoningScene=/자료|기록|분석|조사|검토|확인|비교|판단|선택|계획|일정|문제|조건|규칙|단서|근거|목록|수치/.test(desc);
   const types=Array.isArray(c.personalityTypes)?c.personalityTypes:[];
   const soloScene=!socialScene;
@@ -195,6 +284,12 @@ function personalityFlavor(c,desc,seed=""){
   if(traitExpressions.includes("사회적 신호를 해석하는 데 시간이 필요함"))variants.push("상대의 뜻을 단정하지 않고 말의 의미를 한 번 더 확인한 뒤 반응했어요.");
   if(traitExpressions.includes("기억이 비는 때가 있음"))variants.push("기억이 이어지지 않는 부분은 짐작으로 채우지 않고 주변 기록과 현재 상황부터 확인했어요.");
   if(traitExpressions.includes("자아마다 말투·선호가 다름"))variants.push("지금 앞에 나선 자아의 말투와 선호에 맞춰 평소와는 조금 다른 방식으로 행동했어요.");
+  if(traitExpressions.includes("타인의 감정을 직관보다 관찰과 추론으로 파악함"))variants.push("상대의 감정을 저절로 안다고 여기지 않고 표정과 말, 앞뒤 상황을 관찰해 뜻을 추론했어요.");
+  if(traitExpressions.includes("죄책감이나 공감이 낮게 표현됨"))variants.push("기대되는 감정 반응을 억지로 흉내 내기보다 상황의 규칙과 상대가 분명히 말한 요구를 기준으로 행동했어요.");
+  if(traitExpressions.includes("감정이 급격히 치솟는 때가 있음"))variants.push("감정이 빠르게 치솟는 것을 알아차리자 행동으로 옮기기 전에 호흡과 거리를 먼저 확보했어요.");
+  if(traitExpressions.includes("격해지면 먼저 거리를 두고 진정함"))variants.push("말이 거칠어지기 전에 잠시 자리를 벗어나 진정한 뒤 다시 이야기할 시점을 정했어요.");
+  variants.push(...selectedBodyVariants(c,socialScene));
+  priorityVariants.push(...directTraitLines(c));
   const sentences=String(desc||"").match(/[^.!?。]+[.!?。]?/g)||[String(desc||"")];
   const base=sentences.slice(0,types.length?1:2).join(" ").trim();
   // 전체 유형을 기본 성향으로 더 강하게 반영하되, 아래에서 고른 사회성·판단·
@@ -292,9 +387,38 @@ function catalogChoice(c,place,kind,seed){
 }
 
 function entry(time,title,desc,extra={}){return {time:clock(time),minute:time,title:resolveEntityParticles(title),desc:resolveEntityParticles(desc),...extra}}
+function adaptAccessibilityWording(c,item){
+  if(!item)return item;
+  let title=String(item.title||""),desc=String(item.desc||"");
+  const p=c.bodyProfile||{},wheelchair=p.wheelchair||{},vision=p.vision||{},hearing=p.hearing||{};
+  if(wheelchair.type&&wheelchair.type!=="사용하지 않음"){
+    const replaceMovement=value=>value
+      .replace(/아침 조깅/g,"아침 바깥 운동")
+      .replace(/가볍게 달린 뒤/g,"자기 속도로 이동한 뒤")
+      .replace(/한 바퀴 걷고/g,"한 바퀴 이동하고")
+      .replace(/산책로를 걸으며/g,"산책로를 이동하며")
+      .replace(/길을 걷다가/g,"길을 이동하다가")
+      .replace(/걸어서 이동/g,"자기 방식으로 이동");
+    title=replaceMovement(title);desc=replaceMovement(desc);
+  }
+  if(vision.side==="양쪽"&&vision.level==="맹·시각장애"){
+    title=title.replace(/창밖을 구경하는 중/g,"창밖의 소리와 공기를 느끼는 중").replace(/풍경을 바라보는 중/g,"주변의 소리와 공기를 느끼는 중");
+    desc=desc
+      .replace(/창가에 기대어 오가는 사람과 달라진 날씨를 한동안 느긋하게 바라보고 있어요\./g,"창가에서 바깥의 소리와 공기, 달라진 날씨를 한동안 느긋하게 느끼고 있어요.")
+      .replace(/눈에 띄는 물건/g,"손에 닿거나 위치가 달라진 물건")
+      .replace(/글과 자료를 천천히 살펴보고/g,"글과 자료를 화면 읽기나 익숙한 방식으로 확인하고");
+  }
+  if(hearing.side==="양쪽"&&hearing.level==="농·청각장애"){
+    title=title.replace(/음악 듣는 중/g,"음악을 즐기는 중");
+    desc=desc
+      .replace(/이어폰으로 좋아하는 음악을 듣고/g,"자기에게 편한 방식으로 좋아하는 음악을 즐기고")
+      .replace(/알람을 듣고/g,"빛이나 진동 알람을 확인하고");
+  }
+  return {...item,title,desc};
+}
 function homeEntry(c,time,title="거실에서 쉬는 중",desc="거실 소파에 앉아 조용히 쉬고 있어요.",room="living"){
   const resolvedRoom=room==="bedroom"?(c.sleepRoomId||"bedroom"):room;
-  return entry(time,title,desc,{home:true,room:resolvedRoom});
+  return adaptAccessibilityWording(c,entry(time,title,desc,{home:true,room:resolvedRoom}));
 }
 const away=(c,extra={},date=new Date())=>({townId:activityTown(c,date)?.id||c.townId||state.towns[0]?.id,...extra});
 
@@ -440,7 +564,7 @@ function sharedHomeEntry(c,other,time,date){
     ]
   ];
   const script=scripts[kind][role];
-  return homeEntry(c,time,script[0],personalityFlavor(c,script[1],`shared:${kind}:${role}`),script[2]);
+  return homeEntry(c,time,script[0],personalityFlavor(c,script[1]+respectfulAccessibilityFor(other,`shared:${kind}:${role}`),`shared:${kind}:${role}`),script[2]);
 }
 
 function roommateHomeEntry(c,other,time,date){
@@ -706,7 +830,7 @@ function relationSpecificEntry(c,other,r,time,date,role){
   const ageTone=ageGap>=2?" 나이가 더 많은 쪽답게 단정 짓기보다 상대가 스스로 말할 때까지 기다리려 하고 있어요.":ageGap<=-2?" 나이 차이를 의식하면서도 일방적으로 기대기보다 자기 생각을 분명히 전하려 하고 있어요.":c.ageGroup===other.ageGroup?" 비슷한 세대라 통하는 표현과 경험을 자연스럽게 꺼내고 있어요.":"";
   const kinshipTone=r.type==="부모·자녀"&&r.kinship==="nonblood"?" 혈연으로 이어지지는 않았지만 함께 쌓은 시간과 선택한 가족 역할을 가볍게 여기지 않아요.":r.type==="부모·자녀"?" 서로 닮은 점을 당연한 기준으로 삼지 않고 각자의 성격을 따로 존중하고 있어요.":"";
   const siblingOrderTone=r.type==="형제·자매"?(()=>{const mine=Number(r.siblingOrder?.[c.id])||0,theirs=Number(r.siblingOrder?.[other.id])||0,kinship=r.siblingKinshipByPair?.[[c.id,other.id].sort().join("~")]||"full";return `${mine&&theirs?(mine<theirs?" 먼저 태어났다는 이유로 명령하지 않고 필요한 경험만 나누려 해요.":" 나중에 태어났어도 자기 몫과 의견을 분명하게 말하고 있어요."):""} ${kinship==="nonblood"?"혈연은 아니지만 서로를 형제로 선택해 살아온 시간을 중요하게 여겨요.":kinship==="half"?"한쪽 부모만 같아 서로 다른 성장 경험도 가족사의 일부로 존중하고 있어요.":""}`})():"";
-  return homeEntry(c,time,script[0],personalityFlavor(c,script[1]+tone+ageTone+kinshipTone+siblingOrderTone,`specific:${r.type}:${role}`),script[2]);
+  return homeEntry(c,time,script[0],personalityFlavor(c,script[1]+tone+ageTone+kinshipTone+siblingOrderTone+respectfulAccessibilityFor(other,`specific:${r.type}:${role}`),`specific:${r.type}:${role}`),script[2]);
 }
 
 function relationshipHomeEntry(c,pick,time,date){
@@ -962,7 +1086,7 @@ function relationshipHomeEntry(c,pick,time,date){
   else return sharedHomeEntry(c,other,time,date);
   const roleScripts=scripts.filter((_,index)=>index%2===role%2);
   const script=roleScripts[hash(`${c.id}:${other.id}:${dayKey(date)}:${time}:${overall}:${mutualAwareness}:${trust}:${closeness}:${comfort}:${annoyance}:${attention}:${jealousy}:${conflictIntensity}:${expectation}:${aggression}`)%roleScripts.length];
-  return homeEntry(c,time,script[0],personalityFlavor(c,script[1]+combinedTone,`relation:${r.id}:${role}`),script[2]);
+  return homeEntry(c,time,script[0],personalityFlavor(c,script[1]+combinedTone+respectfulAccessibilityFor(other,`relation:${r.id}:${role}`),`relation:${r.id}:${role}`),script[2]);
 }
 
 function relationshipMorningEntry(c,pick,time,date){
@@ -1102,6 +1226,48 @@ const homeActivityPoolFor=c=>{
       ]));
     });
   });
+  const body=c.bodyProfile||{},wheelchair=body.wheelchair||{},arm=body.prostheticArm||{},leg=body.prostheticLeg||{},hearing=body.hearing||{},vision=body.vision||{};
+  if(wheelchair.type&&wheelchair.type!=="사용하지 않음"){
+    pool.push(
+      ["현관에서 휠체어를 점검하는 중",wheelchair.type==="전동 휠체어"?"배터리 잔량과 조작부, 타이어 상태를 확인하고 오늘 이동할 접근 가능한 동선을 살펴봤어요.":"타이어와 브레이크, 쿠션 위치를 확인하고 자기 몸에 편안한 상태로 맞췄어요.","entry"],
+      ["외출할 접근 가능한 동선을 확인하는 중","경사로와 출입구 폭, 이용 가능한 이동 수단을 확인하고 어느 길로 갈지 직접 골랐어요.","study"],
+      ["거실에서 편안한 위치를 잡는 중","가구 사이의 회전 공간과 손이 닿는 위치를 살핀 뒤 방해받지 않고 하던 일을 이어 갈 자리를 골랐어요.","living"]
+    );
+  }
+  if(arm.side&&arm.side!=="사용하지 않음"){
+    const armLabel=`${arm.side==="양쪽"?"양쪽":arm.side} ${arm.custom||arm.type||"의수"}`;
+    pool.push(
+      [`${armLabel}의 상태를 살피는 중`,`소켓과 연결 부위를 확인하고 피부에 불편한 곳이 없는지 살핀 뒤 오늘 할 일에 맞게 조절했어요.`,"bedroom"],
+      [`${armLabel}에 맞는 도구를 준비하는 중`,"자기가 익숙하게 쓰는 도구의 위치와 잡는 방식을 맞춰 놓고 필요한 일을 자연스럽게 시작했어요.","study"]
+    );
+  }
+  if(leg.side&&leg.side!=="사용하지 않음"){
+    const legLabel=`${leg.side==="양쪽"?"양쪽":leg.side} ${leg.custom||leg.type||"의족"}`;
+    pool.push(
+      [`${legLabel}의 착용 상태를 확인하는 중`,"소켓과 정렬 상태를 살피고 오늘 몸 상태에 편안한지 확인한 뒤 자기 속도로 움직이기 시작했어요.","bedroom"],
+      ["오늘 활동에 맞는 이동 준비를 하는 중",`${legLabel}과 신발, 필요한 관리 용품을 오늘 일정에 맞춰 차분히 챙겼어요.`,"entry"]
+    );
+  }
+  const hearingSupports=Array.isArray(hearing.supports)?hearing.supports:[];
+  if(hearing.side&&hearing.side!=="설정하지 않음"){
+    if(hearingSupports.includes("보청기")||hearingSupports.includes("인공와우"))pool.push(["청각 보조기기 상태를 확인하는 중",`${hearingSupports.includes("보청기")?"보청기":"인공와우"}의 배터리와 연결 상태를 확인하고 주변 소리가 편안한 설정으로 맞췄어요.`,"bedroom"]);
+    if(hearingSupports.includes("자막"))pool.push(["보고 싶은 영상의 자막을 맞추는 중","자막 크기와 배경 대비를 읽기 편하게 바꾸고 내용에 집중할 준비를 했어요.","living"]);
+  }
+  const visionSupports=Array.isArray(vision.supports)?vision.supports:[];
+  if(vision.side&&vision.side!=="설정하지 않음"){
+    if(visionSupports.includes("화면 읽기"))pool.push(["화면 읽기로 오늘 정보를 확인하는 중","화면 읽기 기능으로 알림과 일정을 차례로 듣고 필요한 항목을 직접 골랐어요.","study"]);
+    if(visionSupports.includes("흰지팡이"))pool.push(["현관의 이동 동선을 확인하는 중","흰지팡이와 외출 물품을 손이 닿는 자리에 챙기고 달라진 장애물이 없는지 확인했어요.","entry"]);
+    if(visionSupports.includes("안내견"))pool.push(["안내견과 외출 준비를 하는 중","안내견의 하네스와 필요한 물품을 챙기고 오늘 갈 곳과 쉴 시간을 차분히 준비했어요.","entry"]);
+  }
+  const conditions=Array.isArray(body.healthConditions)?body.healthConditions:[];
+  if(conditions.includes("당뇨병"))pool.push(
+    ["외출용 건강 관리 물품을 챙기는 중","스스로 정한 관리 계획에 따라 측정 도구와 필요한 물품, 비상용 간식을 빠짐없이 챙겼어요.","entry"],
+    ["오늘의 식사와 휴식 시간을 확인하는 중","치료를 임의로 바꾸지 않고 평소 관리 계획 안에서 일정과 식사 시간을 함께 살폈어요.","study"]
+  );
+  if(conditions.some(value=>["천식","심혈관 질환","관절 질환","만성 통증","신장 질환"].includes(value)))pool.push(
+    ["오늘 몸 상태에 맞게 일정을 조절하는 중","몸의 신호를 살핀 뒤 무리하지 않도록 활동과 휴식 순서를 자기 기준에 맞게 바꿨어요.","study"],
+    ["잠깐 쉬며 컨디션을 살피는 중","해야 할 일을 포기한 것이 아니라 오래 이어 가기 위해 필요한 만큼 쉬고 다시 시작할 시점을 정했어요.","living"]
+  );
   return pool;
 };
 
@@ -1355,13 +1521,13 @@ function build(c,date=new Date()){
       list.push(homeEntry(c,minute,script[0],script[1],script[2]));
     }
   }
-  return list.map(item=>medievalize(c,item,date)).sort((a,b)=>a.minute-b.minute);
+  return list.map(item=>adaptAccessibilityWording(c,medievalize(c,item,date))).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260806ay";
+const ENGINE_VERSION="20260806bb";
 // 코드 업데이트는 이미 저장된 생활을 바꾸지 않습니다.
 // 캐릭터·관계·일정처럼 사용자가 직접 바꾼 설정만 새 장면 계산에 반영합니다.
-function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,personalityTypes:c.personalityTypes,characterTraits:c.characterTraits,traitExpressions:c.traitExpressions,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
+function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,personalityTypes:c.personalityTypes,characterTraits:c.characterTraits,traitExpressions:c.traitExpressions,traitNotesInScripts:c.traitNotesInScripts,traitNotes:c.traitNotesInScripts?c.traitNotes:"",bodyProfile:c.bodyProfile,timelineResetAt:c.timelineResetAt,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,pets:(state.homes[c.homeId]?.pets||[]).map(p=>[p.id,p.species,p.customSpecies,p.size,p.temperaments,p.bodyTraits,p.needsWalk,p.rideable]),housemates:state.order.map(id=>state.characters[id]).filter(x=>x?.homeId===c.homeId).map(x=>[x.id,x.wake,x.sleep]),rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
 
 function mergeImmutableEntries(kept,generated){
   const merged=[...kept],seen=new Set(kept.map(item=>`${item.minute}|${item.title}|${item.placeId||""}|${item.room||""}`));
@@ -1442,19 +1608,20 @@ export function timeline(c,date=new Date()){
   // 현재 시각 이후에 생기는 실시간 기록은 commitLiveEntry가 기존 배열 뒤에만 추가한다.
   if(old&&today&&Array.isArray(old.entries)&&old.signature===sig)return old.entries;
   if(old&&!today)return Array.isArray(old.entries)?old.entries:[];
-  if(!old||old.signature!==sig){
-    let entries=build(c,date);
+   if(!old||old.signature!==sig){
+     let entries=build(c,date);
     if(c.createdAt){
       const created=new Date(c.createdAt),target=new Date(date.getFullYear(),date.getMonth(),date.getDate());
       const createdDay=new Date(created.getFullYear(),created.getMonth(),created.getDate());
       if(target<createdDay)entries=[];
       else if(target.getTime()===createdDay.getTime())entries=entries.filter(item=>item.minute>=created.getHours()*60+created.getMinutes());
     }
-    if(old&&today){
+    const settingsChanged=old&&today&&Number(c.timelineResetAt||0)>Number(old.settingsAppliedAt||0);
+    if(old&&today&&!settingsChanged){
       const cutoff=nowMin(date),kept=cleanExactRepeatedEntries((Array.isArray(old.entries)?old.entries:[]).filter(item=>item.minute<=cutoff));
       entries=mergeImmutableEntries(kept,entries.filter(item=>item.minute>cutoff));
     }
-    c.days[key]={signature:sig,engineVersion:ENGINE_VERSION,entries};
+    c.days[key]={signature:sig,engineVersion:ENGINE_VERSION,settingsAppliedAt:Number(c.timelineResetAt||0),entries};
     save(false,false);
   }
   return Array.isArray(c.days[key]?.entries)?c.days[key].entries:[];
@@ -2283,7 +2450,7 @@ function sharedPlaceScene(c,current,date){
   return {...current,baseTitle,baseDesc,title:resolveEntityParticles(combinedTitle),desc:resolveEntityParticles(characterVoice(c,combinedDesc)),withId:actualPartnerId,withIds:together.map(other=>other.id),groupInteraction:true,dateGroup:dateGroup||current.dateGroup,mood:dating?"데이트":current.mood};
 }
 export function eventFor(c,date=new Date()){
-  const current=sharedPlaceScene(c,baseEventFor(c,date),date);
+  const current=adaptAccessibilityWording(c,sharedPlaceScene(c,baseEventFor(c,date),date));
   if(current?.groupInteraction){
     const sharedMinute=nowMin(date);
     current.minute=sharedMinute;
@@ -2291,7 +2458,7 @@ export function eventFor(c,date=new Date()){
     (current.withIds||[]).forEach(otherId=>{
       const other=state.characters[otherId];
       if(!other)return;
-      const counterpart=sharedPlaceScene(other,baseEventFor(other,date),date);
+      const counterpart=adaptAccessibilityWording(other,sharedPlaceScene(other,baseEventFor(other,date),date));
       if(!counterpart?.groupInteraction)return;
       counterpart.minute=sharedMinute;
       commitLiveEntry(other,date,counterpart);

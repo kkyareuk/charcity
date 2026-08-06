@@ -620,6 +620,22 @@ body,button,input,select,small,b,p,span{word-break:keep-all;overflow-wrap:break-
 .character-trait-settings label{display:grid;gap:7px}
 .character-trait-settings textarea{width:100%;box-sizing:border-box;resize:vertical}
 .character-trait-settings small{color:var(--muted);line-height:1.55}
+.trait-note-switch{display:flex!important;grid-template-columns:auto 1fr!important;align-items:center;gap:10px!important;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.trait-note-switch input{width:20px!important;height:20px;min-height:0;margin:0}
+.health-accessibility-settings{margin-top:26px;border:2px solid color-mix(in srgb,var(--p) 22%,var(--line));background:color-mix(in srgb,var(--p) 3%,#fff)}
+.health-accessibility-settings>h2,.health-accessibility-settings>p{margin:0}
+.representation-warning{padding:15px 17px;border:1px solid #d59b55;border-radius:16px;background:#fff8ec;color:#603b22}
+.representation-warning b{display:block;margin-bottom:5px}
+.representation-warning p{margin:0;line-height:1.65}
+.health-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.health-field-grid label,.health-accessibility-settings>label{display:grid;gap:7px;color:var(--muted)}
+.health-accessibility-settings fieldset{margin:0;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.health-accessibility-settings legend{padding:0 7px;font-weight:900}
+.health-accessibility-settings fieldset .chips{display:flex;flex-wrap:wrap;gap:7px;margin:0;padding:0;border:0}
+.health-accessibility-settings fieldset button.on{color:#fff;border-color:transparent;background:var(--grad)}
+.health-accessibility-settings textarea{width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:15px;background:#f5f7fb;padding:13px;font:inherit}
+.health-accessibility-settings>small{color:var(--muted);line-height:1.6}
+@media(max-width:700px){.health-field-grid{grid-template-columns:1fr}.health-accessibility-settings{padding:14px}.representation-warning{padding:13px}}
 .character-view-fields{contain:layout style}
 .character-view-fields label{content-visibility:auto;contain-intrinsic-size:110px}
 .native-app body{padding-top:env(safe-area-inset-top)}
