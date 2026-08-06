@@ -609,6 +609,12 @@ body,button,input,select,small,b,p,span{word-break:keep-all;overflow-wrap:break-
   line-height:1.55;
 }
 .personality-extra{margin-top:24px}
+.character-traits-pane{display:grid;gap:22px}
+.traits-pane-heading{display:grid;gap:7px}.traits-pane-heading h2,.traits-pane-heading p{margin:0}
+.traits-pane-heading p,.appearance-settings>p,.appearance-settings>small{color:var(--muted);line-height:1.6}
+.appearance-settings{display:grid;gap:14px;border:2px solid color-mix(in srgb,var(--p) 18%,var(--line));background:color-mix(in srgb,var(--p) 3%,#fff)}
+.appearance-settings>h2,.appearance-settings>p{margin:0}
+.appearance-settings .profile-tag-actions{background:#fff}
 .personality-type-choice{margin-bottom:20px;border-width:2px;background:color-mix(in srgb,var(--p) 5%,#fff)}
 .personality-type-choice>div{gap:9px}
 .character-trait-settings{display:grid;gap:14px;margin-top:28px;border:2px solid color-mix(in srgb,var(--p) 20%,var(--line));background:color-mix(in srgb,var(--p) 4%,#fff)}

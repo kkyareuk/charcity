@@ -1,7 +1,7 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806bb";
-import {eventFor} from "./simulation.js?v=20260806bb";
-import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806bb";
-import {recordCharacterInteraction} from "./state.js?v=20260806bb";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260806bc";
+import {eventFor} from "./simulation.js?v=20260806bc";
+import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260806bc";
+import {recordCharacterInteraction} from "./state.js?v=20260806bc";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -9,7 +9,7 @@ const guidePending=new Set();
 const PAGE_GUIDES={
   observe:["관찰","캐릭터가 지금 어디에서 무엇을 하는지 볼 수 있어요. 위쪽에서 캐릭터와 마을을 바꾸고, 아래 생활로그에서 오늘의 흐름을 확인해 보세요."],
   home:["집","방마다 누가 무엇을 하는지 보고, 집 편집에서 방 사진·동거인·함께 사는 존재·자동차를 설정할 수 있어요."],
-  character:["캐릭터","프로필과 성격, 취향을 설정하면 생활 장면과 대사가 달라져요. 기본 캐릭터 슬롯은 7명이며 상점에서 더 늘릴 수 있어요."],
+  character:["캐릭터","프로필, 신체·서사·인지 특성, 성격과 취향을 설정하면 생활 장면과 대사가 달라져요. 고르지 않은 신체·인지 특성은 장면에서 지어내지 않아요."],
   catalog:["취향 사전","음식, 작품, 음악, 향 같은 세계의 물건을 등록해 캐릭터 취향과 생활 장면에 연결할 수 있어요."],
   relationship:["관계","둘 이상의 캐릭터 관계와 자주 하는 행동을 정하면 상호작용과 생활로그에 반영돼요."],
   routine:["주간 루틴","요일과 시간을 골라 출근, 데이트, 휴식 같은 반복 일정을 만들 수 있어요."],
@@ -341,16 +341,9 @@ function enhanceDynamicForms(){
         select("attractionTarget","끌리는 대상",["설정하지 않음 · 누구에게도 끌리지 않음","여성에게 끌림","남성에게 끌림","여성과 남성에게 끌림","성별과 무관하게 끌림","그외 성별에게 끌림"],active().attractionTarget||"설정하지 않음 · 누구에게도 끌리지 않음")+
         select("relationshipOpenness","새로운 사람에게 끌리는 정도",["설정하지 않음 · 절대 끌리지 않음","연인이 없을 때만 취향이면 끌림","연인이 있어도 취향이면 끌릴 수 있음"],active().relationshipOpenness||"설정하지 않음 · 절대 끌리지 않음","사용자가 직접 설정하지 않으면 새로운 사람에게 절대 끌리지 않아요.")+
         select("wealth","재산",WEALTH_OPTIONS,active().wealth||"평범한 형편","캐릭터가 실제로 가진 경제적 여유예요. 소비 유형과는 별도로 계산돼요.")+
-        select("touchReaction","신체 접촉에 대한 반응",["몸에 손이 닿는 것을 극도로 꺼림","몸에 손이 닿는 것을 싫어함","허락 없는 접촉은 불편함","가까운 사람에게만 허용함","상황에 따라 자연스럽게 받아들임","신체 접촉을 좋아함","먼저 다가가는 편"],active().touchReaction||"상황에 따라 자연스럽게 받아들임","상대 캐릭터의 반응과 공식 관계, 관계별 스킨십 강도를 함께 살펴 생활 장면을 자동으로 만들어요.")+
-        select("appearanceLevel","외모가 눈에 띄는 정도",["매우 추함","못생김","눈에 띄지 않음","수수함","보통","매력적임","매우 아름답거나 잘생김","시선을 사로잡음"],active().appearanceLevel||"보통")+
-        select("appearanceInterest","상대의 외모를 보는 정도",["거의 보지 않음","조금 봄","보통","꽤 중요하게 봄","외모에 크게 끌림"],active().appearanceInterest||"보통")+
-        `<div class="profile-tag-actions"><button type="button" data-profile-tags="appearanceTags">외모 태그 정하기</button><small data-profile-tags-summary="appearanceTags"></small><button type="button" data-profile-tags="attractionTraits">끌리는 특징 정하기</button><small data-profile-tags-summary="attractionTraits"></small></div>`;
+        select("touchReaction","신체 접촉에 대한 반응",["몸에 손이 닿는 것을 극도로 꺼림","몸에 손이 닿는 것을 싫어함","허락 없는 접촉은 불편함","가까운 사람에게만 허용함","상황에 따라 자연스럽게 받아들임","신체 접촉을 좋아함","먼저 다가가는 편"],active().touchReaction||"상황에 따라 자연스럽게 받아들임","상대 캐릭터의 반응과 공식 관계, 관계별 스킨십 강도를 함께 살펴 생활 장면을 자동으로 만들어요.");
       fields.append(block);
     }
-    profile.querySelectorAll("[data-profile-tags-summary]").forEach(summary=>{
-      const values=active()[summary.dataset.profileTagsSummary]||[];
-      summary.textContent=values.length?values.join(" · "):"정하지 않음";
-    });
     if(fields){
       const labelOf=selector=>fields.querySelector(selector)?.closest("label");
       const photo=labelOf('[data-image="photo"]'),primary=labelOf('[data-color="primary"]'),secondary=labelOf('[data-color="secondary"]');
@@ -360,7 +353,7 @@ function enhanceDynamicForms(){
       const sleep=labelOf('[data-field="sleep"]'),sleepHabit=labelOf('[data-field="sleepHabit"]');
       if(wake&&wakeHabit)wake.after(wakeHabit);
       if(sleep&&sleepHabit)sleep.after(sleepHabit);
-      const job=labelOf('[data-field="job"]'),jobTitle=labelOf('[data-field="jobTitle"]'),workplace=labelOf('[data-field="workplaceId"]'),income=labelOf('[data-field="income"]'),gender=labelOf('[data-field="gender"]'),orientation=labelOf('[data-field="attractionTarget"]'),openness=labelOf('[data-field="relationshipOpenness"]'),wealth=labelOf('[data-field="wealth"]'),appearanceInterest=labelOf('[data-field="appearanceInterest"]');
+      const job=labelOf('[data-field="job"]'),jobTitle=labelOf('[data-field="jobTitle"]'),workplace=labelOf('[data-field="workplaceId"]'),income=labelOf('[data-field="income"]'),gender=labelOf('[data-field="gender"]'),orientation=labelOf('[data-field="attractionTarget"]'),wealth=labelOf('[data-field="wealth"]');
       if(job&&gender&&orientation)job.before(gender,orientation);
       if(job&&jobTitle)job.after(jobTitle);
       if(income&&wealth)income.before(wealth);
@@ -369,13 +362,16 @@ function enhanceDynamicForms(){
         birthday.innerHTML=`생일 · 월일<input type="text" inputmode="numeric" maxlength="4" pattern="(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])" data-field="birthday" value="${active().birthday||""}" placeholder="예: 0804"><small>연도 없이 네 자리로 입력해요. 생일파티는 당일 오후 7시에 생성돼요.</small>`;
         workplace.after(birthday);
       }
-      if(appearanceInterest&&openness)appearanceInterest.after(openness);
       const license=profile.querySelector('[data-field="driverLicense"]')?.closest("label");
       if(license)fields.append(license);
       const exportButton=profile.querySelector("[data-export-profile]");
       if(exportButton)profile.append(exportButton);
     }
   }
+  document.querySelectorAll("[data-profile-tags-summary]").forEach(summary=>{
+    const values=active()[summary.dataset.profileTagsSummary]||[];
+    summary.textContent=values.length?values.join(" · "):"정하지 않음";
+  });
   document.querySelectorAll('.catalog-dex-card [data-kind="fashion"][data-catalog-field="image"]').forEach(input=>{
     const detail=input.closest(".catalog-detail");if(!detail||detail.querySelector('[data-catalog-field="material"]'))return;
     const item=state.catalog.fashion.find(value=>value.id===input.dataset.item),box=document.createElement("div");box.className="fashion-extra-fields";
@@ -1515,13 +1511,13 @@ if(!maintenanceEnabled()&&state.order.length&&localStorage.getItem("drawer-villa
   document.body.append(notice);notice.showModal();
 }
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260806bb").catch(error=>{
+  import("./auth.js?v=20260806bc").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260806bb",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260806bc",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();

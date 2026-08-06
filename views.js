@@ -1,5 +1,5 @@
-import {state,active,characterViewFor} from "./state.js?v=20260806bb";
-import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806bb";
+import {state,active,characterViewFor} from "./state.js?v=20260806bc";
+import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806bc";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const hasBatchim=value=>{
@@ -469,6 +469,24 @@ function profileMultiChoice(title,key,options,selected){
   const values=new Set(selected||[]);
   return `<fieldset><legend>${title}</legend><div class="chips">${options.map(value=>`<button type="button" data-body-list="${key}" data-value="${esc(value)}" class="${values.has(value)?"on":""}">${esc(value)}</button>`).join("")}</div></fieldset>`;
 }
+function appearanceSettings(c){
+  const appearanceTags=Array.isArray(c.appearanceTags)?c.appearanceTags:[],attractionTraits=Array.isArray(c.attractionTraits)?c.attractionTraits:[];
+  return `<section class="setting-card appearance-settings">
+    <h2>외형과 외모 인식</h2>
+    <p>캐릭터의 외형과, 이 캐릭터가 다른 사람의 외모를 얼마나 중요하게 보는지를 따로 정해요. 외모 설정만으로 관계나 호감이 자동 생성되지는 않습니다.</p>
+    <div class="health-field-grid">
+      <label>외모가 눈에 띄는 정도<select data-field="appearanceLevel">${["매우 추함","못생김","눈에 띄지 않음","수수함","보통","매력적임","매우 아름답거나 잘생김","시선을 사로잡음"].map(value=>`<option ${value===(c.appearanceLevel||"보통")?"selected":""}>${value}</option>`).join("")}</select></label>
+      <label>상대의 외모를 보는 정도<select data-field="appearanceInterest">${["거의 보지 않음","조금 봄","보통","꽤 중요하게 봄","외모에 크게 끌림"].map(value=>`<option ${value===(c.appearanceInterest||"보통")?"selected":""}>${value}</option>`).join("")}</select></label>
+    </div>
+    <div class="profile-tag-actions">
+      <button type="button" data-profile-tags="appearanceTags">이 캐릭터의 외모 태그 정하기</button>
+      <small data-profile-tags-summary="appearanceTags">${appearanceTags.length?esc(appearanceTags.join(" · ")):"정하지 않음"}</small>
+      <button type="button" data-profile-tags="attractionTraits">이 캐릭터가 끌리는 외형 정하기</button>
+      <small data-profile-tags-summary="attractionTraits">${attractionTraits.length?esc(attractionTraits.join(" · ")):"정하지 않음"}</small>
+    </div>
+    <small>외모 관련 장면은 끌리는 대상, 새로운 사람에게 끌리는 정도, 상대별 시선과 공식 관계까지 함께 허용할 때만 후보가 됩니다.</small>
+  </section>`;
+}
 function healthAccessibilitySettings(c){
   const p=c.bodyProfile||{},wheelchair=p.wheelchair||{},arm=p.prostheticArm||{},leg=p.prostheticLeg||{},hearing=p.hearing||{},vision=p.vision||{};
   const sideOptions=["사용하지 않음","왼쪽","오른쪽","양쪽"];
@@ -517,12 +535,13 @@ function character(){
   const storyGenres=["로맨스","코미디","액션","판타지","SF","스릴러","공포","미스터리","범죄","드라마","시대극","일상","청춘","가족","모험"];
   const taste=`<h2>${esc(c.name)}의 취향 선택</h2><p>‘좋아하는 장르’는 책·영화·드라마·애니메이션 등 이야기 콘텐츠 전체에 공통으로 반영돼요.</p>${chips("관심사",INTERESTS,c.interests||[],"interests")}${chips("취미",HOBBIES,c.hobbies||[],"hobbies")}${chips("음식",FOOD_PREFERENCES,c.foodPreferences||[],"foodPreferences")}${chips("좋아하는 음료",DRINKS,c.drinks||[],"drinks")}${chips("좋아하는 장르 · 이야기 전체",storyGenres,c.favoriteStoryGenres||[],"favoriteStoryGenres")}${chips("좋아하는 음악 장르",MUSIC,c.musicGenres||[],"musicGenres")}${chips("좋아하는 패션 스타일",DETAIL_OPTIONS.fashion,c.favoriteFashionStyles||[],"favoriteFashionStyles")}${chips("좋아하는 영상 종류",videoFormats,c.favoriteVideoGenres||[],"favoriteVideoGenres")}${chips("좋아하는 게임 장르",gameGenres,c.favoriteGameGenres||[],"favoriteGameGenres")}${chips("좋아하는 향 계열",PERFUME_NOTES,c.favoriteScentNotes||[],"favoriteScentNotes")}`;
   const personality=`<h2>${esc(c.name)}의 성격</h2><p>전체 유형을 먼저 고르고, 아래에서 세부 성향을 조절해 주세요.</p>${personalityTypeChoice(c)}${personalityChoice(c,"사람과 어울리는 방식","socialStyle",["혼자가 편함","낯을 가림","조용히 어울림","먼저 다가감","무리의 중심"])}${personalityChoice(c,"정보를 받아들이는 방식","perceptionStyle",["현실과 경험 중시","구체적인 편","균형형","가능성 중시","직관과 상상 중시"])}${personalityChoice(c,"판단하는 방식","decisionStyle",["논리 우선","이성적인 편","균형형","마음을 살핌","공감 우선"])}${personalityChoice(c,"일정을 다루는 방식","planningStyle",["무계획","즉흥적","유연한 편","상황에 따라","미리 정리함","계획적","강박적으로 계획함"])}${personalityChoice(c,"행동을 전환하는 방식","activityTempo",["한 가지씩 차분히","잠깐 쉬고 다음 일","상황에 따라","생각나면 바로 움직임","부산스럽게 여러 일을 오감","허둥대며 주의가 자주 옮겨감"],"활동적인 정도와 별개예요. 뒤쪽일수록 하던 중 다른 일이 눈에 들어오는 행동이 늘어요.")}${personalityChoice(c,"깔끔한 정도","neatness",["어질러도 편함","조금 느슨함","보통","정돈을 좋아함","흐트러짐을 못 참음","결벽에 가까움"])}${personalityChoice(c,"옷을 입는 감각","fashionSense",["패션에 전혀 관심 없음","조합을 자주 틀림","무난하게 입음","센스 있게 입음","스타일링에 능숙함"],"자동 코디의 색 조합·상황 적합성·액세서리 사용에 반영돼요.")}${personalityChoice(c,"남에게 관여하는 정도","interference",["방관자","요청할 때만 도움","적당히 관여","챙기고 확인함","강하게 간섭함","컨트롤프릭"],"방관자는 웬만한 일에 끼어들지 않고, 컨트롤프릭은 상대의 일정과 행동까지 통제하려 해 갈등 가능성이 커져요.")}${personalityChoice(c,"갈등 대응","conflictStyle",["피하는 편","시간을 두고 말함","대화로 해결","바로 따짐","끝까지 결론을 냄"])}${personalityChoice(c,"애정 표현","affectionStyle",["표현이 서툼","조용히 곁에 있음","말로 표현","행동으로 표현","적극적으로 챙김"])}${personalityChoice(c,"생활 에너지","energyRhythm",["집에서 충전","느긋한 편","상황에 따라","활동적인 편","가만히 못 있음"])}`;
-  const profileWithLicense=`<section class="profile-license">${townAssignment(c)}${profile}<label class="check"><input type="checkbox" data-character-check="${c.id}" data-field="driverLicense" ${c.driverLicense?"checked":""}> 운전면허 있음</label>${healthAccessibilitySettings(c)}</section>`;
-  const personalityExtras=`<section class="personality-extra">${personalityChoice(c,"유머·장난 성향","humorStyle",["장난을 거의 하지 않음","건조한 농담만 함","가끔 장난을 즐김","장난을 즐김","유머로 분위기를 이끎"],"웃음·농담·장난 장면의 빈도와 표현을 정해요.")}${personalityChoice(c,"감정 표현의 크기","emotionalExpression",["표정 변화가 거의 없음","감정을 잘 드러내지 않음","상황에 따라 표현함","표현이 풍부함","감정이 바로 드러남"],"같은 감정이라도 표정과 몸짓으로 얼마나 드러나는지 정해요.")}${personalityChoice(c,"충동을 참는 정도","impulseControl",["매우 잘 참음","대체로 참음","가끔 욱하지만 멈춤","쉽게 욱함","거의 참지 않음"],"공격 충동이 있어도 이 성향과 실제 행동 단계가 허용해야 행동으로 나와요.")}${characterTraitChoice(c)}</section>`;
-  const pane=state.characterPane==="personality"?`${personality}${personalityExtras}`:state.characterPane==="taste"?taste:state.characterPane==="worldTaste"?worldTaste:profileWithLicense;
+  const profileWithLicense=`<section class="profile-license">${townAssignment(c)}${profile}<label class="check"><input type="checkbox" data-character-check="${c.id}" data-field="driverLicense" ${c.driverLicense?"checked":""}> 운전면허 있음</label></section>`;
+  const traitsPane=`<section class="character-traits-pane"><div class="traits-pane-heading"><h2>${esc(c.name)}의 신체·서사·인지 특성</h2><p>외형, 신체·건강·접근성, 서사·인지 특성을 이곳에서 정해요. 고르지 않은 특성은 장면에서 지어내지 않습니다.</p></div>${appearanceSettings(c)}${healthAccessibilitySettings(c)}${characterTraitChoice(c)}</section>`;
+  const personalityExtras=`<section class="personality-extra">${personalityChoice(c,"유머·장난 성향","humorStyle",["장난을 거의 하지 않음","건조한 농담만 함","가끔 장난을 즐김","장난을 즐김","유머로 분위기를 이끎"],"웃음·농담·장난 장면의 빈도와 표현을 정해요.")}${personalityChoice(c,"감정 표현의 크기","emotionalExpression",["표정 변화가 거의 없음","감정을 잘 드러내지 않음","상황에 따라 표현함","표현이 풍부함","감정이 바로 드러남"],"같은 감정이라도 표정과 몸짓으로 얼마나 드러나는지 정해요.")}${personalityChoice(c,"충동을 참는 정도","impulseControl",["매우 잘 참음","대체로 참음","가끔 욱하지만 멈춤","쉽게 욱함","거의 참지 않음"],"공격 충동이 있어도 이 성향과 실제 행동 단계가 허용해야 행동으로 나와요.")}</section>`;
+  const pane=state.characterPane==="traits"?traitsPane:state.characterPane==="personality"?`${personality}${personalityExtras}`:state.characterPane==="taste"?taste:state.characterPane==="worldTaste"?worldTaste:profileWithLicense;
   const limit=characterLimit();
   const slotLabel=state.order.length>limit?`${state.order.length}명 저장됨 · 한도 ${limit}명`:`+ 생성 · ${state.order.length}/${limit}`;
-  return `<div class="editor"><aside class="panel"><div class="title"><h2>캐릭터 목록</h2><button data-new ${state.order.length>=limit?"disabled":""}>${slotLabel}</button></div>${list}</aside><section class="panel form"><div class="character-menu"><button data-character-pane="profile" class="${state.characterPane==="profile"?"on":""}">프로필</button><button data-character-pane="personality" class="${state.characterPane==="personality"?"on":""}">성격</button><button data-character-pane="taste" class="${state.characterPane==="taste"?"on":""}">취향 선택</button><button data-character-pane="worldTaste" class="${state.characterPane==="worldTaste"?"on":""}">세계관 선호</button></div>${pane}<button type="button" class="profile-export-open" data-export-profile>프로필 내보내기 · PNG / PDF</button><div class="form-actions"><button class="primary" data-save>캐릭터 저장</button><button class="danger" data-delete-character="${c.id}">캐릭터 삭제</button></div></section></div>`;
+  return `<div class="editor"><aside class="panel"><div class="title"><h2>캐릭터 목록</h2><button data-new ${state.order.length>=limit?"disabled":""}>${slotLabel}</button></div>${list}</aside><section class="panel form"><div class="character-menu"><button data-character-pane="profile" class="${state.characterPane==="profile"?"on":""}">프로필</button><button data-character-pane="traits" class="${state.characterPane==="traits"?"on":""}">신체·서사·인지 특성</button><button data-character-pane="personality" class="${state.characterPane==="personality"?"on":""}">성격</button><button data-character-pane="taste" class="${state.characterPane==="taste"?"on":""}">취향 선택</button><button data-character-pane="worldTaste" class="${state.characterPane==="worldTaste"?"on":""}">세계관 선호</button></div>${pane}<button type="button" class="profile-export-open" data-export-profile>프로필 내보내기 · PNG / PDF</button><div class="form-actions"><button class="primary" data-save>캐릭터 저장</button><button class="danger" data-delete-character="${c.id}">캐릭터 삭제</button></div></section></div>`;
 }
 function wardrobe(){
   const c=active(),owned=new Set(c.inventory?.fashion||[]);
