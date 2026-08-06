@@ -1,7 +1,46 @@
-import {state,active,characterViewFor} from "./state.js?v=20260806ax";
-import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806ax";
+import {state,active,characterViewFor} from "./state.js?v=20260806ay";
+import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260806ay";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const hasBatchim=value=>{
+  const code=[...String(value||"").trim()].at(-1)?.charCodeAt(0);
+  return Number.isFinite(code)&&code>=0xac00&&code<=0xd7a3&&(code-0xac00)%28!==0;
+};
+const withParticle=(value,batchim,noBatchim)=>`${value||""}${hasBatchim(value)?batchim:noBatchim}`;
+const subjectText=value=>withParticle(value,"이","가");
+const objectText=value=>withParticle(value,"을","를");
+const togetherText=value=>withParticle(value,"과","와");
+const regexEscape=value=>String(value||"").replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const displayEntityNames=()=>[
+  ...Object.values(state.characters||{}).map(item=>item?.name),
+  ...Object.values(state.homes||{}).flatMap(home=>[home?.name,...Object.values(home?.rooms||{}).map(room=>room?.name),...(home?.pets||[]).map(pet=>pet?.name)]),
+  ...(state.towns||[]).flatMap(town=>[town?.name,...(town?.places||[]).map(place=>place?.name)]),
+  ...Object.values(state.catalog||{}).flatMap(items=>(items||[]).map(item=>item?.name))
+].filter(Boolean).map(String).sort((a,b)=>b.length-a.length);
+function resolveDisplayParticles(text){
+  let result=String(text||"")
+    .replace(/([가-힣A-Za-z0-9_]+)은\(는\)/g,(_,word)=>withParticle(word,"은","는"))
+    .replace(/([가-힣A-Za-z0-9_]+)이\(가\)/g,(_,word)=>subjectText(word))
+    .replace(/([가-힣A-Za-z0-9_]+)을\(를\)/g,(_,word)=>objectText(word))
+    .replace(/([가-힣A-Za-z0-9_]+)과\(와\)/g,(_,word)=>togetherText(word));
+  displayEntityNames().forEach(name=>{
+    const pattern=new RegExp(`${regexEscape(name)}(은|는|이|가|을|를|과|와)(?=[\\s,.!?·'\"’”)]|$)`,"g");
+    result=result.replace(pattern,(_,particle)=>{
+      if(["은","는"].includes(particle))return withParticle(name,"은","는");
+      if(["이","가"].includes(particle))return subjectText(name);
+      if(["을","를"].includes(particle))return objectText(name);
+      return togetherText(name);
+    });
+  });
+  return result;
+}
+function normalizeDisplayedParticles(root){
+  if(!root||typeof document.createTreeWalker!=="function")return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(node=>{const next=resolveDisplayParticles(node.nodeValue);if(next!==node.nodeValue)node.nodeValue=next});
+}
 const sceneFailureIds=new Set();
 const fallbackEvent=c=>{
   const roomKeys=Object.keys(state.homes?.[c?.homeId]?.rooms||{});
@@ -154,7 +193,7 @@ function dailyLogItems(entries,c){
       const groupKey=canonicalDateGroup(x);
       if(seen.has(groupKey))return"";seen.add(groupKey);
       const steps=entries.filter(step=>canonicalDateGroup(step)===groupKey).sort((a,b)=>a.minute-b.minute);
-      const partner=state.characters[x.withId],title=partner?`${partner.name}와 데이트`:`데이트 일정`;
+      const partner=state.characters[x.withId],title=partner?`${togetherText(partner.name)} 데이트`:`데이트 일정`;
       return `<li class="date-schedule" style="--log-theme:${esc(c.theme?.primary||"#176b60")}"><div class="date-schedule-title"><b>${esc(title)}</b><small>${esc(steps[0].time)}–${esc(steps.at(-1).time)}</small></div><ol>${steps.map(step=>`<li><time>${esc(step.time)}</time><span><b>${esc(step.title.replace(/^데이트 · /,""))}</b><small>${esc(step.desc)}</small></span></li>`).join("")}</ol></li>`;
     }
     return `<li class="${importantEntry(x)?"important":""} ${x===entries.at(-1)?"now":""}" style="--log-theme:${esc(c.theme?.primary||"#176b60")}"><time>${esc(x.time)}</time><span><b>${esc(x.title)}</b><small>${esc(x.desc)}</small></span></li>`;
@@ -309,14 +348,14 @@ function homeCard(id,chars){
       기타:["좋아하는 물건 가까이에서 자기 방식대로 시간을 보내고 있어요.","익숙한 자리를 천천히 둘러보며 달라진 것이 없는지 확인하고 있어요.","편안한 장소를 찾아 쉬면서 주변의 움직임을 살피고 있어요.","먹이와 물이 있는 곳을 확인한 뒤 자기 자리로 돌아가고 있어요."]
     };
     const together={
-      강아지:[`${resident?.name}가 던진 장난감을 쫓아가 다시 발앞에 내려놓고 기대하는 눈으로 바라보고 있어요.`,`${resident?.name}의 뒤를 졸졸 따라다니다가 멈출 때마다 옆에 나란히 앉고 있어요.`,`${resident?.name}가 바닥에 숨긴 간식을 냄새로 찾아내며 함께 노즈워크를 하고 있어요.`,`${resident?.name}의 무릎에 턱을 얹고 손길을 기다리며 꼬리를 천천히 흔들고 있어요.`],
-      고양이:[`${resident?.name}가 흔드는 장난감의 끝을 낮게 노리다가 정확한 순간에 앞발로 낚아채고 있어요.`,`${resident?.name}가 앉은 자리 가까이에 몸을 둥글게 말고 같은 공간에 조용히 머물고 있어요.`,`${resident?.name}가 정리하려는 상자에 먼저 들어가 자리를 차지하고 나오지 않고 있어요.`,`${resident?.name}의 손 냄새를 확인한 뒤 머리를 가볍게 비비고 자기 자리로 돌아갔어요.`],
-      새:[`${resident?.name}의 말소리를 짧게 따라 하며 대답하듯 재잘거리고 있어요.`,`${resident?.name}가 건네는 작은 간식을 부리로 조심스럽게 받아 먹고 있어요.`,`${resident?.name}의 어깨 가까운 횃대에서 머리카락 움직임을 신기하게 바라보고 있어요.`,`${resident?.name}가 장난감 위치를 바꾸자 고개를 갸웃거리며 바로 확인하러 갔어요.`],
-      거북이:[`${resident?.name}가 놓아 준 먹이 쪽으로 목을 길게 내밀고 천천히 다가가고 있어요.`,`${resident?.name}가 지켜보는 앞에서 익숙한 길을 따라 느긋하게 방 안을 탐색하고 있어요.`,`${resident?.name}가 조명을 조절해 주자 따뜻해진 자리에 올라 편안하게 몸을 펴고 있어요.`,`${resident?.name}의 손이 가까워지자 잠깐 멈췄다가 안전하다고 느끼고 다시 움직였어요.`],
-      호랑이:[`${resident?.name}와 충분한 거리를 둔 채 튼튼한 장난감의 움직임을 따라 시선을 옮기고 있어요.`,`${resident?.name}가 준비한 넓은 놀이 공간을 천천히 돌며 냄새를 확인하고 있어요.`,`${resident?.name}의 익숙한 목소리를 듣고 귀를 돌린 뒤 편안한 자세를 유지하고 있어요.`,`${resident?.name}가 안전하게 놓아 준 장난감을 앞발로 눌러 보며 반응을 살피고 있어요.`],
-      인공지능:[`${resident?.name}의 오늘 일정과 날씨를 확인해 필요한 준비물을 짧게 알려 주고 있어요.`,`${resident?.name}가 찾는 물건의 마지막 확인 위치를 기록에서 찾아 안내하고 있어요.`,`${resident?.name}의 방해가 되지 않도록 조명을 낮추고 알림을 조용한 방식으로 전환했어요.`,`${resident?.name}에게 필요한 것이 없는지 확인한 뒤 가까운 곳에서 대기하고 있어요.`],
-      식물:[`${resident?.name}가 화분을 돌려 주자 잎이 햇빛을 고르게 받는 방향으로 놓였어요.`,`${resident?.name}가 흙의 상태를 살피는 동안 잎 끝의 작은 물방울이 빛나고 있어요.`,`${resident?.name}가 마른 잎을 떼어 주자 새순이 더 잘 보이게 됐어요.`],
-      드래곤:[`${resident?.name}의 뒤를 따라다니며 발끝 가까이 꼬리를 살랑거리고 있어요.`,`${resident?.name}가 건넨 간식을 앞발로 붙잡고 작은 불씨로 살짝 데워 먹고 있어요.`,`${resident?.name}의 무릎 가까이에 몸을 말고 목을 울리며 편안해하고 있어요.`],
+      강아지:[`${subjectText(resident?.name)} 던진 장난감을 쫓아가 다시 발앞에 내려놓고 기대하는 눈으로 바라보고 있어요.`,`${resident?.name}의 뒤를 졸졸 따라다니다가 멈출 때마다 옆에 나란히 앉고 있어요.`,`${subjectText(resident?.name)} 바닥에 숨긴 간식을 냄새로 찾아내며 함께 노즈워크를 하고 있어요.`,`${resident?.name}의 무릎에 턱을 얹고 손길을 기다리며 꼬리를 천천히 흔들고 있어요.`],
+      고양이:[`${subjectText(resident?.name)} 흔드는 장난감의 끝을 낮게 노리다가 정확한 순간에 앞발로 낚아채고 있어요.`,`${subjectText(resident?.name)} 앉은 자리 가까이에 몸을 둥글게 말고 같은 공간에 조용히 머물고 있어요.`,`${subjectText(resident?.name)} 정리하려는 상자에 먼저 들어가 자리를 차지하고 나오지 않고 있어요.`,`${resident?.name}의 손 냄새를 확인한 뒤 머리를 가볍게 비비고 자기 자리로 돌아갔어요.`],
+      새:[`${resident?.name}의 말소리를 짧게 따라 하며 대답하듯 재잘거리고 있어요.`,`${subjectText(resident?.name)} 건네는 작은 간식을 부리로 조심스럽게 받아 먹고 있어요.`,`${resident?.name}의 어깨 가까운 횃대에서 머리카락 움직임을 신기하게 바라보고 있어요.`,`${subjectText(resident?.name)} 장난감 위치를 바꾸자 고개를 갸웃거리며 바로 확인하러 갔어요.`],
+      거북이:[`${subjectText(resident?.name)} 놓아 준 먹이 쪽으로 목을 길게 내밀고 천천히 다가가고 있어요.`,`${subjectText(resident?.name)} 지켜보는 앞에서 익숙한 길을 따라 느긋하게 방 안을 탐색하고 있어요.`,`${subjectText(resident?.name)} 조명을 조절해 주자 따뜻해진 자리에 올라 편안하게 몸을 펴고 있어요.`,`${resident?.name}의 손이 가까워지자 잠깐 멈췄다가 안전하다고 느끼고 다시 움직였어요.`],
+      호랑이:[`${togetherText(resident?.name)} 충분한 거리를 둔 채 튼튼한 장난감의 움직임을 따라 시선을 옮기고 있어요.`,`${subjectText(resident?.name)} 준비한 넓은 놀이 공간을 천천히 돌며 냄새를 확인하고 있어요.`,`${resident?.name}의 익숙한 목소리를 듣고 귀를 돌린 뒤 편안한 자세를 유지하고 있어요.`,`${subjectText(resident?.name)} 안전하게 놓아 준 장난감을 앞발로 눌러 보며 반응을 살피고 있어요.`],
+      인공지능:[`${resident?.name}의 오늘 일정과 날씨를 확인해 필요한 준비물을 짧게 알려 주고 있어요.`,`${subjectText(resident?.name)} 찾는 물건의 마지막 확인 위치를 기록에서 찾아 안내하고 있어요.`,`${resident?.name}의 방해가 되지 않도록 조명을 낮추고 알림을 조용한 방식으로 전환했어요.`,`${resident?.name}에게 필요한 것이 없는지 확인한 뒤 가까운 곳에서 대기하고 있어요.`],
+      식물:[`${subjectText(resident?.name)} 화분을 돌려 주자 잎이 햇빛을 고르게 받는 방향으로 놓였어요.`,`${subjectText(resident?.name)} 흙의 상태를 살피는 동안 잎 끝의 작은 물방울이 빛나고 있어요.`,`${subjectText(resident?.name)} 마른 잎을 떼어 주자 새순이 더 잘 보이게 됐어요.`],
+      드래곤:[`${resident?.name}의 뒤를 따라다니며 발끝 가까이 꼬리를 살랑거리고 있어요.`,`${subjectText(resident?.name)} 건넨 간식을 앞발로 붙잡고 작은 불씨로 살짝 데워 먹고 있어요.`,`${resident?.name}의 무릎 가까이에 몸을 말고 목을 울리며 편안해하고 있어요.`],
       기타:[`${resident?.name} 가까이에서 익숙한 방식으로 시간을 보내고 있어요.`,`${resident?.name}의 움직임을 살피며 편안한 거리를 유지하고 있어요.`,`${resident?.name}가 이름을 부르자 하던 일을 멈추고 잠시 반응을 보여 줬어요.`]
     };
     let choices=resident?(together[pet.species]||together.기타):(solo[pet.species]||solo.기타);
@@ -407,6 +446,19 @@ function personalityTypeChoice(c){
   const selected=new Set(c.personalityTypes||[]);
   return `<section class="chips personality-choice personality-type-choice"><h3>이 캐릭터의 전체적인 유형 · 최대 4개</h3><small>여기서 고른 유형이 혼자 하는 행동과 말투의 기본이 되고, 관계 설정은 그다음에 상대별 차이를 더해요.</small><div>${PERSONALITY_TYPES.map(value=>`<button type="button" data-personality-type="${value}" class="${selected.has(value)?"on":""}">${value}</button>`).join("")}</div></section>`;
 }
+const CHARACTER_TRAITS=["ADHD 설정","자폐 스펙트럼 설정","복수 자아·다중 정체성 설정","해리 경험","불안 관련 특성","강박 관련 특성","감각 처리 특성","틱·투렛 관련 특성","기타 직접 설정"];
+const TRAIT_EXPRESSIONS=["주의가 쉽게 전환됨","관심 대상에 과집중함","생각이 떠오르면 바로 시작함","감각 자극에 민감함","익숙한 순서가 바뀌면 힘듦","사회적 신호를 해석하는 데 시간이 필요함","기억이 비는 때가 있음","자아마다 말투·선호가 다름"];
+function characterTraitChoice(c){
+  const traits=new Set(c.characterTraits||[]),expressions=new Set(c.traitExpressions||[]);
+  return `<section class="setting-card character-trait-settings">
+    <h2>서사·인지 특성 · 선택 사항</h2>
+    <p>진단명이나 설정 라벨만으로 행동을 추측하지 않아요. 먼저 설정을 표시하고, 실제 생활 장면에 나타낼 방식은 아래에서 따로 골라 주세요.</p>
+    <fieldset><legend>설정 라벨 · 최대 8개</legend><div class="chips">${CHARACTER_TRAITS.map(value=>`<button type="button" data-character-trait="${value}" class="${traits.has(value)?"on":""}">${value}</button>`).join("")}</div></fieldset>
+    <fieldset><legend>실제 장면에 반영할 표현 · 최대 8개</legend><div class="chips">${TRAIT_EXPRESSIONS.map(value=>`<button type="button" data-trait-expression="${value}" class="${expressions.has(value)?"on":""}">${value}</button>`).join("")}</div><small>예: ADHD 설정을 골라도 ‘주의가 쉽게 전환됨’을 별도로 고르지 않으면 모든 행동을 산만하게 만들지 않습니다.</small></fieldset>
+    <label>직접 설정한 표현 메모<textarea data-trait-notes maxlength="1200" rows="5" placeholder="예: 자아 이름, 각 자아의 말투·선호, 전환을 알아차리는 정도, 피하고 싶은 묘사">${esc(c.traitNotes||"")}</textarea></label>
+    <small>의학적 진단 도구가 아니라 캐릭터 설정용 항목입니다. 실제 사람을 진단하거나 특성을 단정하지 않습니다.</small>
+  </section>`;
+}
 function character(){
   const c=active();
   const list=state.order.map((id,index)=>{const x=state.characters[id];return `<div class="char-sort-row"><button class="char-row ${id===c.id?"on":""}" data-edit="${id}" style="--own:${x.theme.primary}">${avatar(x)}<span><b>${esc(x.name)}</b><small>${esc(x.job)}</small></span></button><span class="sort-controls"><button data-sort="${id}" data-direction="-1" ${index===0?"disabled":""} aria-label="위로">▲</button><button data-sort="${id}" data-direction="1" ${index===state.order.length-1?"disabled":""} aria-label="아래로">▼</button></span></div>`}).join("");
@@ -423,7 +475,7 @@ function character(){
   const taste=`<h2>${esc(c.name)}의 취향 선택</h2><p>‘좋아하는 장르’는 책·영화·드라마·애니메이션 등 이야기 콘텐츠 전체에 공통으로 반영돼요.</p>${chips("관심사",INTERESTS,c.interests||[],"interests")}${chips("취미",HOBBIES,c.hobbies||[],"hobbies")}${chips("음식",FOOD_PREFERENCES,c.foodPreferences||[],"foodPreferences")}${chips("좋아하는 음료",DRINKS,c.drinks||[],"drinks")}${chips("좋아하는 장르 · 이야기 전체",storyGenres,c.favoriteStoryGenres||[],"favoriteStoryGenres")}${chips("좋아하는 음악 장르",MUSIC,c.musicGenres||[],"musicGenres")}${chips("좋아하는 패션 스타일",DETAIL_OPTIONS.fashion,c.favoriteFashionStyles||[],"favoriteFashionStyles")}${chips("좋아하는 영상 종류",videoFormats,c.favoriteVideoGenres||[],"favoriteVideoGenres")}${chips("좋아하는 게임 장르",gameGenres,c.favoriteGameGenres||[],"favoriteGameGenres")}${chips("좋아하는 향 계열",PERFUME_NOTES,c.favoriteScentNotes||[],"favoriteScentNotes")}`;
   const personality=`<h2>${esc(c.name)}의 성격</h2><p>전체 유형을 먼저 고르고, 아래에서 세부 성향을 조절해 주세요.</p>${personalityTypeChoice(c)}${personalityChoice(c,"사람과 어울리는 방식","socialStyle",["혼자가 편함","낯을 가림","조용히 어울림","먼저 다가감","무리의 중심"])}${personalityChoice(c,"정보를 받아들이는 방식","perceptionStyle",["현실과 경험 중시","구체적인 편","균형형","가능성 중시","직관과 상상 중시"])}${personalityChoice(c,"판단하는 방식","decisionStyle",["논리 우선","이성적인 편","균형형","마음을 살핌","공감 우선"])}${personalityChoice(c,"일정을 다루는 방식","planningStyle",["무계획","즉흥적","유연한 편","상황에 따라","미리 정리함","계획적","강박적으로 계획함"])}${personalityChoice(c,"행동을 전환하는 방식","activityTempo",["한 가지씩 차분히","잠깐 쉬고 다음 일","상황에 따라","생각나면 바로 움직임","부산스럽게 여러 일을 오감","허둥대며 주의가 자주 옮겨감"],"활동적인 정도와 별개예요. 뒤쪽일수록 하던 중 다른 일이 눈에 들어오는 행동이 늘어요.")}${personalityChoice(c,"깔끔한 정도","neatness",["어질러도 편함","조금 느슨함","보통","정돈을 좋아함","흐트러짐을 못 참음","결벽에 가까움"])}${personalityChoice(c,"옷을 입는 감각","fashionSense",["패션에 전혀 관심 없음","조합을 자주 틀림","무난하게 입음","센스 있게 입음","스타일링에 능숙함"],"자동 코디의 색 조합·상황 적합성·액세서리 사용에 반영돼요.")}${personalityChoice(c,"남에게 관여하는 정도","interference",["방관자","요청할 때만 도움","적당히 관여","챙기고 확인함","강하게 간섭함","컨트롤프릭"],"방관자는 웬만한 일에 끼어들지 않고, 컨트롤프릭은 상대의 일정과 행동까지 통제하려 해 갈등 가능성이 커져요.")}${personalityChoice(c,"갈등 대응","conflictStyle",["피하는 편","시간을 두고 말함","대화로 해결","바로 따짐","끝까지 결론을 냄"])}${personalityChoice(c,"애정 표현","affectionStyle",["표현이 서툼","조용히 곁에 있음","말로 표현","행동으로 표현","적극적으로 챙김"])}${personalityChoice(c,"생활 에너지","energyRhythm",["집에서 충전","느긋한 편","상황에 따라","활동적인 편","가만히 못 있음"])}`;
   const profileWithLicense=`<section class="profile-license">${townAssignment(c)}${profile}<label class="check"><input type="checkbox" data-character-check="${c.id}" data-field="driverLicense" ${c.driverLicense?"checked":""}> 운전면허 있음</label></section>`;
-  const personalityExtras=`<section class="personality-extra">${personalityChoice(c,"유머·장난 성향","humorStyle",["장난을 거의 하지 않음","건조한 농담만 함","가끔 장난을 즐김","장난을 즐김","유머로 분위기를 이끎"],"웃음·농담·장난 장면의 빈도와 표현을 정해요.")}${personalityChoice(c,"감정 표현의 크기","emotionalExpression",["표정 변화가 거의 없음","감정을 잘 드러내지 않음","상황에 따라 표현함","표현이 풍부함","감정이 바로 드러남"],"같은 감정이라도 표정과 몸짓으로 얼마나 드러나는지 정해요.")}${personalityChoice(c,"충동을 참는 정도","impulseControl",["매우 잘 참음","대체로 참음","가끔 욱하지만 멈춤","쉽게 욱함","거의 참지 않음"],"공격 충동이 있어도 이 성향과 실제 행동 단계가 허용해야 행동으로 나와요.")}</section>`;
+  const personalityExtras=`<section class="personality-extra">${personalityChoice(c,"유머·장난 성향","humorStyle",["장난을 거의 하지 않음","건조한 농담만 함","가끔 장난을 즐김","장난을 즐김","유머로 분위기를 이끎"],"웃음·농담·장난 장면의 빈도와 표현을 정해요.")}${personalityChoice(c,"감정 표현의 크기","emotionalExpression",["표정 변화가 거의 없음","감정을 잘 드러내지 않음","상황에 따라 표현함","표현이 풍부함","감정이 바로 드러남"],"같은 감정이라도 표정과 몸짓으로 얼마나 드러나는지 정해요.")}${personalityChoice(c,"충동을 참는 정도","impulseControl",["매우 잘 참음","대체로 참음","가끔 욱하지만 멈춤","쉽게 욱함","거의 참지 않음"],"공격 충동이 있어도 이 성향과 실제 행동 단계가 허용해야 행동으로 나와요.")}${characterTraitChoice(c)}</section>`;
   const pane=state.characterPane==="personality"?`${personality}${personalityExtras}`:state.characterPane==="taste"?taste:state.characterPane==="worldTaste"?worldTaste:profileWithLicense;
   const limit=characterLimit();
   const slotLabel=state.order.length>limit?`${state.order.length}명 저장됨 · 한도 ${limit}명`:`+ 생성 · ${state.order.length}/${limit}`;
@@ -644,7 +696,9 @@ export function renderApp(next){
     console.error(`화면 일부 렌더링 실패 · ${state.activeTab}`,error);
     content=`<section class="panel empty view-error"><h1>이 화면의 일부 데이터를 읽지 못했어요</h1><p>저장 데이터는 지우거나 바꾸지 않았습니다. 다른 화면은 계속 사용할 수 있어요.</p><div class="sync-actions"><button class="primary" data-tab="observe">관찰 화면으로 이동</button><button data-tab="settings">설정 열기</button></div></section>`;
   }
-  document.querySelector("#app").innerHTML=`${header()}<main>${content}</main>`;
+  const appRoot=document.querySelector("#app");
+  appRoot.innerHTML=`${header()}<main>${content}</main>`;
+  normalizeDisplayedParticles(appRoot);
   const backgroundSelect=document.querySelector("[data-world-bg]");
   if(backgroundSelect){
     [...backgroundSelect.options].forEach(option=>{

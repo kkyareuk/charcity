@@ -611,6 +611,15 @@ body,button,input,select,small,b,p,span{word-break:keep-all;overflow-wrap:break-
 .personality-extra{margin-top:24px}
 .personality-type-choice{margin-bottom:20px;border-width:2px;background:color-mix(in srgb,var(--p) 5%,#fff)}
 .personality-type-choice>div{gap:9px}
+.character-trait-settings{display:grid;gap:14px;margin-top:28px;border:2px solid color-mix(in srgb,var(--p) 20%,var(--line));background:color-mix(in srgb,var(--p) 4%,#fff)}
+.character-trait-settings h2,.character-trait-settings p{margin:0}
+.character-trait-settings fieldset{margin:0;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.character-trait-settings legend{padding:0 7px;font-weight:900}
+.character-trait-settings .chips{display:flex;flex-wrap:wrap;gap:8px}
+.character-trait-settings .chips button.on{background:var(--grad);color:#fff;border-color:transparent}
+.character-trait-settings label{display:grid;gap:7px}
+.character-trait-settings textarea{width:100%;box-sizing:border-box;resize:vertical}
+.character-trait-settings small{color:var(--muted);line-height:1.55}
 .character-view-fields{contain:layout style}
 .character-view-fields label{content-visibility:auto;contain-intrinsic-size:110px}
 .native-app body{padding-top:env(safe-area-inset-top)}
