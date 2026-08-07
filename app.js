@@ -1,7 +1,7 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260807r";
-import {eventFor} from "./simulation.js?v=20260807r";
-import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel} from "./views.js?v=20260807r";
-import {recordCharacterInteraction} from "./state.js?v=20260807r";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260807s";
+import {eventFor} from "./simulation.js?v=20260807s";
+import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel} from "./views.js?v=20260807s";
+import {recordCharacterInteraction} from "./state.js?v=20260807s";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -553,7 +553,18 @@ function showOnboarding(){
     dialog.querySelector("[data-onboarding-login]")?.addEventListener("click",async()=>{const auth=window.ParallelCityAuth;if(!auth)return showToast("로그인 기능을 불러오는 중이에요");await auth.login();step=3;paint()});
     dialog.querySelector("[data-onboarding-create]")?.addEventListener("click",()=>{if(createCharacter(characterLimit())){localStorage.setItem(ONBOARDING_KEY,"done");localStorage.setItem(SETUP_COACH_KEY,"home");dialog.close();state.activeTab="character";setCharacterPane("profile");save();render();showToast("첫 캐릭터의 이름부터 정해 볼까요?")}});
   };
-  dialog.onclose=()=>dialog.remove();document.body.append(dialog);paint();dialog.showModal();
+  dialog.onclose=()=>dialog.remove();
+  dialog.setAttribute("aria-label","첫 시작 안내");
+  document.body.append(dialog);
+  paint();
+  // iPhone Safari에서 전체 화면 dialog를 modal로 연 직후 다른 렌더가 겹치면
+  // 배경만 흐려진 채 내용이 눌리지 않는 경우가 있어 모바일은 자체 전체화면으로 연다.
+  try{
+    if(document.documentElement.classList.contains("native-app"))dialog.show();
+    else dialog.showModal();
+  }catch(error){
+    dialog.setAttribute("open","");
+  }
 }
 function showSetupCoach(){
   const step=localStorage.getItem(SETUP_COACH_KEY);
@@ -2078,20 +2089,31 @@ const mobileSiteQuery=window.matchMedia?.("(max-width:720px)");
 mobileSiteQuery?.addEventListener?.("change",()=>render());
 render();
 if(!maintenanceEnabled())showInstallButton();
-if(!maintenanceEnabled()&&state.order.length&&localStorage.getItem("drawer-village-hide-photo-backup-notice")!=="1"&&localStorage.getItem("parallel-city-hide-photo-backup-notice")!=="1"){
+function showPhotoBackupNotice(){
+  if(maintenanceEnabled()||!state.order.length||localStorage.getItem("drawer-village-hide-photo-backup-notice")==="1"||localStorage.getItem("parallel-city-hide-photo-backup-notice")==="1"||document.querySelector(".backup-notice"))return;
+  const openDialog=document.querySelector("dialog[open]");
+  if(openDialog){
+    if(openDialog.dataset.waitingForBackupNotice!=="1"){
+      openDialog.dataset.waitingForBackupNotice="1";
+      openDialog.addEventListener("close",()=>requestAnimationFrame(showPhotoBackupNotice),{once:true});
+    }
+    return;
+  }
   const notice=document.createElement("dialog");notice.className="backup-notice";
   notice.innerHTML=`<form method="dialog"><h2>사진 보관 안내</h2><p>사진 파일을 직접 올리면 Google 저장 공간에 함께 보관돼요. 용량을 아끼고 싶다면 사진 파일 대신 <b>웹에 공개된 이미지 주소</b>를 입력해 주세요. 기본 사진 저장 공간은 <b>최대 120장·총 20MB</b>이며 상점에서 50MB로 늘릴 수 있어요. 같은 사진은 중복으로 올리지 않고, 현재 사용량은 설정에서 확인할 수 있습니다.</p><label><input type="checkbox" name="hide"> 다시는 보지 않기</label><button class="primary" value="ok">알겠어요</button></form>`;
   notice.onclose=()=>{if(notice.querySelector('[name="hide"]')?.checked)localStorage.setItem("drawer-village-hide-photo-backup-notice","1");notice.remove()};
-  document.body.append(notice);notice.showModal();
+  document.body.append(notice);
+  try{notice.showModal()}catch(error){notice.show()}
 }
+requestAnimationFrame(showPhotoBackupNotice);
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260807r").catch(error=>{
+  import("./auth.js?v=20260807s").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260807r",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260807s",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();

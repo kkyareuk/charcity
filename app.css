@@ -3298,3 +3298,133 @@ img.catalog-app-icon{object-fit:contain;border-radius:0;background:transparent;f
   }
   .page-guide form{padding:13px}.page-guide p{font-size:12px}.page-guide-heading h2{font-size:17px}
 }
+
+/* 2026-08-07 Safari·화면 여백·PC 앱 셸 보정 */
+.settings-business-footer{
+  display:grid;
+  gap:12px;
+  margin-top:12px;
+  padding:24px 4px 8px;
+  border-top:1px solid currentColor;
+  color:#8190a2;
+  font-size:12px;
+  line-height:1.8;
+}
+.settings-business-footer>b{color:#d8e1eb;font-size:14px}
+.settings-business-footer p{margin:0}
+.settings-business-footer i{display:inline-block;width:1px;height:10px;margin:0 9px;background:currentColor;opacity:.45;vertical-align:-1px}
+.settings-business-footer a{color:inherit;text-decoration:none}
+.settings-business-footer a:hover{text-decoration:underline}
+html[data-active-tab="settings"] body>.site-footer{display:none}
+.settings-business-footer nav{display:flex;flex-wrap:wrap;gap:9px 28px}
+.settings-business-footer nav a:first-child{color:#f2f6fa;font-weight:800}
+
+@media(max-width:720px){
+  html.native-app,
+  html.native-app body{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    overflow-x:hidden!important;
+  }
+  html.native-app body{padding-left:0!important;padding-right:0!important}
+  html.native-app main{
+    width:100%;
+    max-width:none;
+    min-width:0;
+    margin:0!important;
+  }
+  html.native-app[data-active-tab="character"],
+  html.native-app[data-active-tab="character"] body,
+  html.native-app[data-active-tab="character"] main{
+    background:#101925!important;
+  }
+  html.native-app[data-active-tab="character"] main{padding:0!important}
+  html.native-app[data-active-tab="character"] .character-editor{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0;
+    margin:0!important;
+  }
+  html.native-app[data-active-tab="character"] .character-editor>.form{
+    width:100%;
+    min-width:0;
+    margin:0!important;
+  }
+  html.native-app[data-active-tab="character"] .mobile-character-dashboard{
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding-left:max(12px,env(safe-area-inset-left));
+    padding-right:max(12px,env(safe-area-inset-right));
+  }
+  html.native-app .native-status-card,
+  html.native-app .native-log-card{
+    width:100%!important;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+  .onboarding-dialog[open]{
+    position:fixed;
+    z-index:5000;
+    display:block;
+    box-sizing:border-box;
+    overflow:auto;
+    box-shadow:0 30px 100px #000b;
+  }
+  .onboarding-dialog[open] form{
+    display:grid;
+    min-height:100%;
+    box-sizing:border-box;
+  }
+  .settings-business-footer{padding:20px 2px max(16px,env(safe-area-inset-bottom));font-size:10px}
+  .settings-business-footer nav{gap:8px 16px}
+}
+
+@media(min-width:721px){
+  body{
+    background:
+      radial-gradient(circle at 82% 2%,color-mix(in srgb,var(--p) 28%,transparent),transparent 32%),
+      linear-gradient(150deg,#0e1825,#162537 58%,#0d1723);
+    background-attachment:fixed;
+  }
+  header{
+    height:92px;
+    border-color:#ffffff14;
+    color:#f5f8fb;
+    background:linear-gradient(135deg,#101a28f5,#1d2e40f5);
+    box-shadow:0 12px 35px #0003;
+    backdrop-filter:blur(18px);
+  }
+  header .brand small,header #save-state{color:#aab8c6}
+  header nav button{
+    border-color:#ffffff18;
+    color:#dbe4ed;
+    background:#ffffff09;
+  }
+  header nav button:hover{background:#ffffff13}
+  header nav button.on{
+    border-color:#ffffff3d;
+    background:linear-gradient(135deg,var(--p),var(--s));
+    box-shadow:0 10px 24px #0004,inset 0 1px #ffffff38;
+  }
+  main{
+    width:100%;
+    max-width:1680px;
+    min-height:calc(100dvh - 92px);
+    padding:26px clamp(20px,3vw,48px) 42px;
+  }
+  main>.panel,
+  main>.catalog-shell,
+  main>.home-page,
+  main>.mobile-town-shell{
+    box-shadow:0 24px 70px #0003;
+  }
+  .settings-shell,.routine-shell,.shop-store,.catalog-shell,.relationship-page{
+    border-color:#ffffff18;
+    border-radius:30px;
+  }
+  .settings-business-footer{color:#7d8997}
+  .settings-business-footer>b,.settings-business-footer nav a:first-child{color:#39485a}
+}

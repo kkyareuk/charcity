@@ -1,5 +1,5 @@
-import {state,active,characterViewFor,explicitCharacterViewFor} from "./state.js?v=20260807r";
-import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260807r";
+import {state,active,characterViewFor,explicitCharacterViewFor} from "./state.js?v=20260807s";
+import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260807s";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const hasBatchim=value=>{
@@ -259,22 +259,48 @@ function nativeScenePresentation(c,entry){
 }
 function importantEntry(entry){return /출근|수업|직장|데이트|병원|다툼|기상|공무|훈련/.test(entry.title)}
 const loggableEntry=entry=>entry?.title!=="자는 중"&&!/에서 자는 중$/.test(entry?.title||"");
+function preferredMomentEntry(previous,next){
+  if(!previous)return next;
+  const score=item=>{
+    const purpose=String(item?.datePurpose||"").trim();
+    const title=String(item?.title||"");
+    let value=0;
+    if(item?.dateGroup)value+=8;
+    if(item?.groupInteraction)value+=3;
+    if(purpose&&title.includes(purpose))value+=7;
+    if(/^.+?[과와] 데이트\s*·/.test(title))value+=4;
+    // 예전 공동 장면에서 기본 행동 뒤에 다른 제목을 계속 붙인 항목은
+    // 같은 분의 목적이 분명한 장면보다 우선하지 않는다.
+    value-=Math.max(0,title.split(" · ").length-2)*4;
+    return value;
+  };
+  return score(next)>=score(previous)?next:previous;
+}
+function uniqueDisplayedMoments(entries){
+  const byMinute=new Map();
+  [...entries].sort((a,b)=>Number(a.minute)-Number(b.minute)).forEach(item=>{
+    const minute=Number(item?.minute);
+    if(!Number.isFinite(minute))return;
+    byMinute.set(minute,preferredMomentEntry(byMinute.get(minute),item));
+  });
+  return [...byMinute.values()].sort((a,b)=>Number(a.minute)-Number(b.minute));
+}
 function dailyLogItems(entries,c){
   const seen=new Set();
   const canonicalDateGroup=x=>x?.dateGroup?String(x.dateGroup):"";
-  return entries.map(x=>{
+  return uniqueDisplayedMoments(entries).map(x=>{
     if(x.dateGroup){
       const groupKey=canonicalDateGroup(x);
       if(seen.has(groupKey))return"";seen.add(groupKey);
       const stepMap=new Map();
       entries.filter(step=>canonicalDateGroup(step)===groupKey).sort((a,b)=>a.minute-b.minute).forEach(step=>{
-        const key=`${step.minute}|${step.title}|${step.desc}`;
-        if(!stepMap.has(key))stepMap.set(key,step);
+        const key=Number(step.minute);
+        stepMap.set(key,preferredMomentEntry(stepMap.get(key),step));
       });
       const steps=[...stepMap.values()];
       const partner=state.characters[x.withId],title=partner?`${togetherText(partner.name)} 데이트`:`데이트 일정`;
       const purpose=x.datePurpose?` · ${x.datePurpose}`:"";
-      return `<li class="date-schedule" style="--log-theme:${esc(c.theme?.primary||"#176b60")}"><div class="date-schedule-title"><b>${esc(title+purpose)}</b><small>${esc(steps[0].time)}–${esc(steps.at(-1).time)}</small></div><ol>${steps.map(step=>`<li><time>${esc(step.time)}</time><span><b>${esc(step.title.replace(/^.+?와 데이트\s*·\s*/,"").replace(/^데이트\s*·\s*/,""))}</b><small>${esc(step.desc)}</small></span></li>`).join("")}</ol></li>`;
+      return `<li class="date-schedule" style="--log-theme:${esc(c.theme?.primary||"#176b60")}"><div class="date-schedule-title"><b>${esc(title+purpose)}</b><small>${esc(steps[0].time)}–${esc(steps.at(-1).time)}</small></div><ol>${steps.map(step=>`<li><time>${esc(step.time)}</time><span><b>${esc(step.title.replace(/^.+?[과와] 데이트\s*·\s*/,"").replace(/^데이트\s*·\s*/,""))}</b><small>${esc(step.desc)}</small></span></li>`).join("")}</ol></li>`;
     }
     return `<li class="${importantEntry(x)?"important":""} ${x===entries.at(-1)?"now":""}" style="--log-theme:${esc(c.theme?.primary||"#176b60")}"><time>${esc(x.time)}</time><span><b>${esc(x.title)}</b><small>${esc(x.desc)}</small></span></li>`;
   }).join("");
@@ -298,12 +324,7 @@ function displayTimeline(c,current=eventFor(c)){
     const withoutSameMinute=entries.filter(item=>Number(item.minute)!==Number(current.minute));
     entries.splice(0,entries.length,...withoutSameMinute,current);
   }
-  const byMoment=new Map();
-  entries.sort((a,b)=>Number(a.minute)-Number(b.minute)).forEach(item=>{
-    const key=item.dateGroup?`date:${item.dateGroup}:${item.minute}`:`minute:${item.minute}`;
-    byMoment.set(key,item);
-  });
-  return compactDisplayedTimeline([...byMoment.values()]);
+  return compactDisplayedTimeline(uniqueDisplayedMoments(entries));
 }
 function dailyLog(c){
   const entries=displayTimeline(c);
@@ -1120,7 +1141,11 @@ function fontSettings(){
   const options=[["system","기기 기본 글꼴 · 가장 익숙하고 선명함"],["noto","Noto Sans KR · 단정한 고딕"],["kopub","KoPub 돋움 · 출판물처럼 또렷함"],["cafe24slim","Cafe24 PRO SLIM · 날렵한 고딕"],["changwonround","창원단감둥근체 · 부드럽고 편안함"],["konkon","온글잎 콘콘체 · 동글동글한 손글씨"],["gowun","고운돋움 · 부드러운 고딕"],["myeongjo","나눔명조 · 책처럼 차분함"],["dohyeon","배민 도현체 · 기존 디자인"]];
   return `<section class="setting-card font-setting-card"><h2>화면 글꼴</h2><p>본문, 버튼과 생활 로그에 적용됩니다. 읽기 편한 글꼴을 골라 보세요.</p><label>사용할 글꼴<select data-setting="uiFont">${options.map(([value,label])=>`<option value="${value}" ${state.uiFont===value?"selected":""}>${label}</option>`).join("")}</select></label><div class="font-preview"><b>서랍마을의 오늘</b><span>캐릭터들이 각자의 하루를 보내고 있어요. 긴 생활 로그도 편안하게 읽어 보세요.</span></div></section>`;
 }
-function settings(){return `<section class="panel form settings-shell"><h1>설정</h1>${fontSettings()}<section class="setting-card"><h2>마을 지도 표시</h2><label>건물 표기 방식<select data-setting="buildingLabelMode"><option value="full" ${state.buildingLabelMode==="full"?"selected":""}>이름과 건물 유형 표시</option><option value="name" ${state.buildingLabelMode==="name"?"selected":""}>이름만 표시</option><option value="none" ${state.buildingLabelMode==="none"?"selected":""}>아무 글자도 표시하지 않기</option></select></label><label>지도 위 캐릭터 표기<select data-setting="mapCharacterLabelMode"><option value="none" ${state.mapCharacterLabelMode==="none"?"selected":""}>캐릭터 아이콘만 표시</option><option value="name" ${state.mapCharacterLabelMode==="name"?"selected":""}>아이콘 아래 이름 표시</option></select></label><small>같은 건물에 있는 캐릭터는 지도에서 한 묶음으로 표시됩니다.</small></section><section class="sync-panel"><h2>Google 계정과 데이터</h2><p id="account-status">${esc(accountText)}</p><div class="sync-actions"><button class="primary" data-auth>Google 로그인 / 로그아웃</button><button data-sync-upload>동기화</button><button data-sync-download>불러오기</button></div><small>동기화와 불러오기는 필요할 때만 설정에서 사용해요.</small></section><section class="setting-card"><h2>브라우저 백업 파일</h2><p>Firebase가 막혀도 현재 데이터와 사진을 파일 하나로 보관할 수 있어요.</p><div class="sync-actions"><button data-export-file>백업 파일 내보내기</button><button data-import-file>백업 파일 불러오기</button></div></section><section class="setting-card feedback-card"><h2>개발자에게 피드백 보내기</h2><p>사이트 안에서 작성해 보내면 개발자 이메일로 전달돼요.</p><form data-feedback-form><fieldset><legend>어떤 내용인가요?</legend><div class="feedback-category-grid">${["기능 제안","오류 신고","좋았던 점","생활 장면 제안","기타"].map((value,index)=>`<label><input type="radio" name="category" value="${value}" ${index===0?"checked":""}><span>${value}</span></label>`).join("")}</div></fieldset><label>내용<textarea name="message" maxlength="3000" rows="7" required placeholder="어떤 화면에서 무엇이 좋았거나 불편했는지 적어 주세요."></textarea></label><button class="primary" type="submit">피드백 보내기</button><small class="feedback-status" aria-live="polite"></small></form></section><section class="setting-card"><h2>페이지 안내</h2><p>각 페이지를 처음 열었을 때 나오는 안내를 다시 볼 수 있어요.</p><button data-guide-reset>모든 페이지 안내 다시 보기</button></section><button data-reset>모든 데이터 초기화</button></section>`}
+function settingsContent(){return `<section class="panel form settings-shell"><h1>설정</h1>${fontSettings()}<section class="setting-card"><h2>마을 지도 표시</h2><label>건물 표기 방식<select data-setting="buildingLabelMode"><option value="full" ${state.buildingLabelMode==="full"?"selected":""}>이름과 건물 유형 표시</option><option value="name" ${state.buildingLabelMode==="name"?"selected":""}>이름만 표시</option><option value="none" ${state.buildingLabelMode==="none"?"selected":""}>아무 글자도 표시하지 않기</option></select></label><label>지도 위 캐릭터 표기<select data-setting="mapCharacterLabelMode"><option value="none" ${state.mapCharacterLabelMode==="none"?"selected":""}>캐릭터 아이콘만 표시</option><option value="name" ${state.mapCharacterLabelMode==="name"?"selected":""}>아이콘 아래 이름 표시</option></select></label><small>같은 건물에 있는 캐릭터는 지도에서 한 묶음으로 표시됩니다.</small></section><section class="sync-panel"><h2>Google 계정과 데이터</h2><p id="account-status">${esc(accountText)}</p><div class="sync-actions"><button class="primary" data-auth>Google 로그인 / 로그아웃</button><button data-sync-upload>동기화</button><button data-sync-download>불러오기</button></div><small>동기화와 불러오기는 필요할 때만 설정에서 사용해요.</small></section><section class="setting-card"><h2>브라우저 백업 파일</h2><p>Firebase가 막혀도 현재 데이터와 사진을 파일 하나로 보관할 수 있어요.</p><div class="sync-actions"><button data-export-file>백업 파일 내보내기</button><button data-import-file>백업 파일 불러오기</button></div></section><section class="setting-card feedback-card"><h2>개발자에게 피드백 보내기</h2><p>사이트 안에서 작성해 보내면 개발자 이메일로 전달돼요.</p><form data-feedback-form><fieldset><legend>어떤 내용인가요?</legend><div class="feedback-category-grid">${["기능 제안","오류 신고","좋았던 점","생활 장면 제안","기타"].map((value,index)=>`<label><input type="radio" name="category" value="${value}" ${index===0?"checked":""}><span>${value}</span></label>`).join("")}</div></fieldset><label>내용<textarea name="message" maxlength="3000" rows="7" required placeholder="어떤 화면에서 무엇이 좋았거나 불편했는지 적어 주세요."></textarea></label><button class="primary" type="submit">피드백 보내기</button><small class="feedback-status" aria-live="polite"></small></form></section><section class="setting-card"><h2>페이지 안내</h2><p>각 페이지를 처음 열었을 때 나오는 안내를 다시 볼 수 있어요.</p><button data-guide-reset>모든 페이지 안내 다시 보기</button></section><button data-reset>모든 데이터 초기화</button></section>`}
+function businessInformationFooter(){
+  return `<footer class="settings-business-footer" aria-label="사업자 및 정책 정보"><b>까륵</b><p>사업자등록번호 : 540-17-02654 <i></i> 대표 : 김세은<br>호스팅서비스 : Cloudflare, Inc. <i></i> 통신판매업 신고번호 : 신고 진행 중 <a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=5401702654" target="_blank" rel="noopener">사업자정보확인</a><br>고객센터 : <a href="tel:01076630610">010-7663-0610</a> <i></i> 이메일 : <a href="mailto:kkyaareuk@gmail.com">kkyaareuk@gmail.com</a><br>사업장 주소 : 서울특별시 양천구 신정중앙로 68, 403-133호</p><nav aria-label="정책 문서"><a href="./privacy.html">개인정보처리방침</a><a href="./terms.html">서비스 이용약관</a><a href="https://pages.tosspayments.com/terms/user" target="_blank" rel="noopener">토스페이먼츠 이용약관</a></nav></footer>`;
+}
+function settings(){return settingsContent().replace(/<\/section>$/,`${businessInformationFooter()}</section>`)}
 function townPlaceEditor(p,items,audiences,selected){
   return `<details class="${selected?"mobile-selected":""}" ${selected?"open":""}><summary><b>${esc(p.emoji)} ${esc(p.name)}</b></summary><div class="place-edit-heading"><span><b>${esc(p.name)} 편집</b><small>유형을 먼저 고르면 어울리는 건물 모양을 추천해요.</small></span><button class="danger" data-delete-place="${p.id}">이 건물 삭제</button></div><div class="place-config"><label>건물 이름<input data-place-field="name" data-place-id="${p.id}" value="${esc(p.name)}"></label><label>건물 유형<select data-place-field="type" data-place-id="${p.id}">${placeTypeOptions(p)}</select></label><label>세부 유형<select data-place-field="subtype" data-place-id="${p.id}">${placeSubtypeOptions(p)}</select></label><label>가격대<select data-place-field="priceRange" data-place-id="${p.id}">${["저렴","보통","고급","명품"].map(x=>`<option ${p.priceRange===x?"selected":""}>${x}</option>`).join("")}</select></label><label>마을 속 건물 크기<input type="range" min=".45" max="1.5" step=".05" data-place-field="imageScale" data-place-id="${p.id}" value="${p.imageScale||1}"></label><label>매운맛 정도<select data-place-field="spicy" data-place-id="${p.id}">${levelOptions(SPICE_LEVELS,p.spicy||0)}</select></label><label>단맛 정도<select data-place-field="sweet" data-place-id="${p.id}">${levelOptions(SWEET_LEVELS,p.sweet||0)}</select></label></div><div class="place-photo-tools"><b>지도에 표시할 건물 모양</b><span><button data-building-shape-open="${p.id}">건물 모양 선택</button></span><b>생활 로그·현재 장면용 내부 사진</b><span><button data-place-interior-image="${p.id}">내부 사진 업로드</button><button data-image-url="placeInterior" data-id="${p.id}">링크</button>${p.interiorImage?`<button data-clear-place-interior-image="${p.id}">지우기</button>`:""}</span></div><h4>주요 이용층</h4><div class="stock-picker">${audiences.map(x=>`<button data-place-audience="${p.id}" data-value="${x}" class="${(p.audiences||[]).includes(x)?"on":""}">${x}</button>`).join("")}</div><h4>이곳에서 파는 것·이용할 수 있는 것</h4><div class="stock-list stock-picker">${items.map(item=>`<button data-place-stock="${p.id}" data-item-id="${item.id}" class="${(p.stock||[]).includes(item.id)?"on":""}">${CATALOG_LABELS[item.kind]} · ${esc(item.name)}</button>`).join("")}</div></details>`;
 }
