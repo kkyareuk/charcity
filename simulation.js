@@ -1,4 +1,4 @@
-import {state,save,characterViewFor} from "./state.js?v=20260807e";
+import {state,save,characterViewFor} from "./state.js?v=20260807f";
 
 const mins=t=>{const [h,m]=String(t||"00:00").split(":").map(Number);return h*60+m};
 const clock=n=>`${String(Math.floor(n/60)%24).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
@@ -553,12 +553,41 @@ const HAIR_STYLE_ROUTINES={
   "드레드록":["각 록의 뿌리와 두피 상태를 살피고 서로 엉켜 붙은 부분을 조심스럽게 나누었어요.","드레드록에 남은 수분이 없도록 충분히 말린 뒤 필요한 부분만 가볍게 정리했어요.","눌린 록을 손으로 풀어 원하는 방향으로 배치하고 두피가 당기지 않는지 확인했어요."],
   "히메컷":["얼굴 옆의 짧고 곧은 단과 뒤의 긴 머리를 따로 빗어 히메컷의 선을 또렷하게 살렸어요.","양옆의 짧은 머리가 같은 높이로 떨어지는지 확인하고 긴 뒷머리는 차분히 정돈했어요.","얼굴선을 감싸는 옆머리 끝을 곧게 다듬어 커트의 층이 흐려지지 않게 했어요."],
   "웨이브 스타일":["웨이브가 뭉개진 부분을 손가락으로 나누고 컬의 방향을 따라 가볍게 쥐어 모양을 되살렸어요.","머리가 완전히 마르기 전 웨이브 결을 아래에서 받쳐 말려 부스스함을 줄였어요.","컬마다 탄력이 다르지 않도록 손질제를 고르게 바르고 굵은 웨이브의 흐름을 정돈했어요."],
-  "고데기 스타일링":["열 보호제를 먼저 바르고 머리를 작은 구역으로 나누어 필요한 부분에만 고데기를 사용했어요.","같은 곳에 열을 오래 대지 않도록 속도를 맞추며 앞쪽부터 뒤쪽까지 차례로 모양을 잡았어요.","고데기로 만든 결이 충분히 식은 뒤 손가락으로 풀어 과하게 굳어 보이지 않게 정리했어요."]
+  "고데기 스타일링":["열 보호제를 먼저 바르고 머리를 작은 구역으로 나누어 필요한 부분에만 고데기를 사용했어요.","같은 곳에 열을 오래 대지 않도록 속도를 맞추며 앞쪽부터 뒤쪽까지 차례로 모양을 잡았어요.","고데기로 만든 결이 충분히 식은 뒤 손가락으로 풀어 과하게 굳어 보이지 않게 정리했어요."],
+  "시스루 앞머리":["이마가 은은하게 비치는 앞머리의 양을 나누고 가벼운 결이 뭉치지 않게 정리했어요.","가느다란 앞머리 사이의 간격을 손끝으로 맞추고 뿌리 볼륨만 살짝 살렸어요."],
+  "일자 앞머리":["눈썹선을 따라 떨어지는 앞머리가 한쪽으로 기울지 않게 곧게 빗었어요.","일자 앞머리의 끝선이 흐트러진 곳만 가볍게 적셔 반듯하게 말렸어요."],
+  "처피뱅":["짧은 앞머리의 끝이 서로 뭉치지 않도록 손끝으로 가볍게 나누었어요.","처피뱅의 짧은 선을 살리면서 들뜬 부분만 눌러 정돈했어요."],
+  "커튼뱅":["가운데에서 갈라지는 앞머리를 양쪽 얼굴선으로 자연스럽게 이어 말렸어요.","커튼뱅이 한쪽만 무겁지 않도록 가르마와 볼륨을 맞추었어요."],
+  "옆으로 넘긴 앞머리":["앞머리를 평소 방향으로 넘기고 관자놀이 쪽 잔머리와 자연스럽게 이어 주었어요.","옆으로 흐르는 앞머리가 다시 내려오지 않도록 뿌리 방향부터 천천히 말렸어요."],
+  "앞머리가 한쪽 눈을 가림":["한쪽 눈을 덮는 앞머리의 방향은 유지하되 시야가 필요한 순간에는 넘길 수 있게 결을 정리했어요.","눈가를 스치는 머리끝이 불편하지 않은지 확인하고 한쪽으로 흐르는 선을 다듬었어요."],
+  "앞머리가 양쪽 눈을 가림":["양쪽 눈 앞에 내려온 앞머리가 서로 엉키지 않도록 가닥을 나누어 정리했어요.","시야를 확보해야 할 때 쉽게 걷어 낼 수 있도록 눈앞의 머리결을 가볍게 빗었어요."],
+  "슬릭백":["머리 전체를 뒤로 매끈하게 넘기고 표면의 잔머리를 소량의 제품으로 눌렀어요.","윤기가 한곳에만 몰리지 않게 제품을 얇게 펴 바르며 슬릭백의 선을 정돈했어요."],
+  "픽시컷":["짧은 층을 손가락으로 나누어 픽시컷의 가벼운 방향을 살렸어요.","귀 주변과 목덜미의 짧은 머리가 들뜨지 않도록 결을 따라 말렸어요."],
+  "댄디컷":["앞머리와 옆머리가 단정하게 이어지도록 가르마와 볼륨을 차분히 맞췄어요.","댄디컷의 둥근 실루엣이 무너지지 않게 눌린 부분만 살려 냈어요."],
+  "리프컷":["얼굴선을 감싸며 갈라지는 머리끝을 잎처럼 자연스럽게 바깥으로 정리했어요.","리프컷의 앞뒤 층이 끊겨 보이지 않도록 귀 주변의 흐름을 맞추었어요."],
+  "허쉬컷":["가벼운 층이 얼굴 주변에서 자연스럽게 흩어지도록 아래에서 받쳐 말렸어요.","허쉬컷의 얇은 끝선이 한 덩어리로 붙지 않게 손가락으로 결을 나누었어요."],
+  "샤기컷":["거칠게 층진 끝부분을 소량의 왁스로 나누어 샤기컷의 질감을 살렸어요.","정수리의 짧은 층과 긴 끝이 자연스럽게 이어지도록 털어 말렸어요."],
+  "모히칸":["가운데 긴 부분의 방향을 세우고 양옆의 짧은 선이 깔끔한지 확인했어요.","모히칸의 높이가 한쪽으로 기울지 않도록 앞과 뒤의 고정력을 나누어 조절했어요."],
+  "리젠트":["앞머리를 위로 올려 뒤로 흐르게 만들고 옆머리는 단정히 눌렀어요.","리젠트의 앞쪽 볼륨과 뒤로 넘어가는 곡선이 매끄럽게 이어지는지 살폈어요."],
+  "사이드 포니테일":["머리를 한쪽으로 모아 묶고 목과 어깨에 닿는 위치가 불편하지 않게 조절했어요.","사이드 포니테일이 앞으로 쏠리지 않도록 매듭과 잔머리를 다시 정리했어요."],
+  "트윈테일":["양쪽 묶음의 높이와 머리 양을 맞추고 당기는 곳이 없는지 확인했어요.","트윈테일의 끝을 각각 빗어 움직일 때 결이 자연스럽게 흩어지도록 했어요."],
+  "하프업 번":["윗머리만 모아 작은 번으로 고정하고 아래에 풀린 머리는 결대로 정리했어요.","하프업 번이 너무 무겁지 않도록 묶는 양과 핀의 위치를 조절했어요."],
+  "프렌치 브레이드":["정수리부터 머리를 조금씩 더하며 단단하고 고른 프렌치 브레이드를 만들었어요.","머리선을 따라 이어지는 땋은 결의 간격이 일정한지 손끝으로 확인했어요."],
+  "피시테일 브레이드":["가느다란 머리 가닥을 번갈아 넘기며 촘촘한 피시테일 모양을 만들었어요.","땋은 끝을 조금씩 풀어 물고기 꼬리처럼 이어지는 결을 자연스럽게 정돈했어요."],
+  "콘로우":["두피를 따라 이어지는 가르마와 땋은 줄의 간격을 차분히 확인했어요.","콘로우의 뿌리가 지나치게 당기지 않는지 살피고 느슨한 끝만 다시 고정했어요."],
+  "박스 브레이드":["나뉜 구역마다 브레이드의 굵기와 길이가 고른지 차례로 확인했어요.","박스 브레이드가 서로 엉키지 않게 나누고 두피가 당기는 부분을 조절했어요."],
+  "스페이스 번":["양쪽 머리를 높게 말아 올려 두 번의 크기와 위치를 맞추었어요.","스페이스 번의 중심이 기울지 않게 핀을 나누어 꽂고 잔머리를 정리했어요."],
+  "브레이드 업두":["땋은 머리를 뒤쪽으로 감아 올리고 보이지 않는 곳에 핀을 나누어 고정했어요.","브레이드 업두의 무게가 한쪽에 몰리지 않도록 매듭과 핀 위치를 다시 살폈어요."],
+  "롱 스트레이트":["긴 머리를 구역별로 나누어 빗고 끝까지 곧게 이어지는 결을 정돈했어요.","등 뒤로 흐르는 긴 직모가 엉키지 않도록 아래쪽부터 천천히 풀어 주었어요."],
+  "단발 웨이브":["단발 끝의 웨이브가 얼굴 양쪽에서 비슷하게 흐르도록 컬을 나누었어요.","턱선 부근의 웨이브가 뭉치지 않게 손끝으로 가볍게 풀어 주었어요."],
+  "베이비펌":["짧고 잔잔한 컬을 손으로 눌러 뭉치지 않게 하나씩 되살렸어요.","베이비펌의 작은 컬이 부스스해지지 않도록 수분과 손질제를 가볍게 더했어요."],
+  "히피펌":["굵기와 방향이 다른 컬을 자연스럽게 나누어 히피펌의 풍성함을 살렸어요.","컬을 아래에서 받쳐 말리며 전체 볼륨이 한쪽으로 치우치지 않게 했어요."],
+  "가르마펌":["가르마 양쪽의 컬이 얼굴선을 따라 흐르도록 뿌리부터 방향을 잡았어요.","앞머리의 곡선과 옆머리의 볼륨이 자연스럽게 이어지도록 손질했어요."]
 };
 function hairStyleRoutine(c,style,hair,date){
   const bank=HAIR_STYLE_ROUTINES[style]||HAIR_STYLE_ROUTINES["자연스럽게 풀어 둠"];
   const line=bank[hash(`${c.id}:${dayKey(date)}:${style}:hair-routine`)%bank.length];
-  return hair?`${hair}를 살피고 ${line}`:line;
+  return hair?`${object(hair)} 살피고 ${line}`:line;
 }
 function hairStyleSocialDetail(c,seed=""){
   const styles=appearanceProfile(c).hairStyles||[];
@@ -584,7 +613,36 @@ function hairStyleSocialDetail(c,seed=""){
     "드레드록":"한 가닥씩 고유한 결을 가진 드레드록",
     "히메컷":"얼굴 옆의 짧은 단과 긴 머리가 또렷한 히메컷",
     "웨이브 스타일":"빛과 움직임에 따라 결이 달라지는 웨이브",
-    "고데기 스타일링":"의도한 방향으로 정교하게 잡힌 스타일링"
+    "고데기 스타일링":"의도한 방향으로 정교하게 잡힌 스타일링",
+    "시스루 앞머리":"이마가 은은하게 비치는 가벼운 시스루 앞머리",
+    "일자 앞머리":"반듯한 선으로 떨어지는 일자 앞머리",
+    "처피뱅":"이마 위로 짧고 선명하게 잘린 처피뱅",
+    "커튼뱅":"얼굴 양옆으로 부드럽게 갈라지는 커튼뱅",
+    "옆으로 넘긴 앞머리":"한쪽 얼굴선으로 자연스럽게 흐르는 앞머리",
+    "앞머리가 한쪽 눈을 가림":"한쪽 눈 위로 비스듬히 내려온 앞머리",
+    "앞머리가 양쪽 눈을 가림":"두 눈 앞에 길게 드리운 앞머리",
+    "슬릭백":"윤기 있게 뒤로 정돈한 슬릭백",
+    "픽시컷":"짧은 층이 가볍게 살아 있는 픽시컷",
+    "댄디컷":"단정한 둥근 선이 이어지는 댄디컷",
+    "리프컷":"얼굴선을 따라 잎처럼 갈라지는 리프컷",
+    "허쉬컷":"얇은 층이 가볍게 흩어지는 허쉬컷",
+    "샤기컷":"거칠고 가벼운 끝선이 살아 있는 샤기컷",
+    "모히칸":"가운데로 힘 있게 이어지는 모히칸",
+    "리젠트":"앞에서 뒤로 높게 넘어가는 리젠트",
+    "사이드 포니테일":"한쪽 어깨로 흐르는 사이드 포니테일",
+    "트윈테일":"양쪽에서 높이 맞춰 흔들리는 트윈테일",
+    "하프업 번":"작게 말아 올린 윗머리와 풀린 머리가 겹치는 하프업 번",
+    "프렌치 브레이드":"정수리부터 촘촘하게 이어지는 프렌치 브레이드",
+    "피시테일 브레이드":"가느다란 결이 교차하는 피시테일 브레이드",
+    "콘로우":"두피선을 따라 정교하게 이어지는 콘로우",
+    "박스 브레이드":"일정한 구역과 굵기로 나뉜 박스 브레이드",
+    "스페이스 번":"머리 양쪽에 둥글게 올라간 스페이스 번",
+    "브레이드 업두":"땋은 결을 감아 올려 완성한 업두",
+    "롱 스트레이트":"등 뒤로 곧게 흐르는 긴 직모",
+    "단발 웨이브":"턱선 주변에서 부드럽게 움직이는 단발 웨이브",
+    "베이비펌":"작고 잔잔한 컬이 촘촘한 베이비펌",
+    "히피펌":"풍성하고 자유로운 컬이 이어지는 히피펌",
+    "가르마펌":"가르마 양쪽으로 자연스럽게 흐르는 컬"
   };
   return details[style]||style;
 }
@@ -1767,7 +1825,7 @@ function build(c,date=new Date()){
   return list.map(item=>withResidenceLocation(c,adaptAccessibilityWording(c,medievalize(c,item,date)),date)).sort((a,b)=>a.minute-b.minute);
 }
 
-const ENGINE_VERSION="20260807e";
+const ENGINE_VERSION="20260807f";
 // 코드 업데이트는 이미 저장된 생활을 바꾸지 않습니다.
 // 캐릭터·관계·일정처럼 사용자가 직접 바꾼 설정만 새 장면 계산에 반영합니다.
 function signature(c){return JSON.stringify({createdAt:c.createdAt,birthday:c.birthday,birthdays:state.order.map(id=>[id,state.characters[id]?.birthday]),townId:c.townId,homeId:c.homeId,residences:c.residences,homes:(c.residences||[]).map(item=>{const home=state.homes[item.homeId];return[home?.id,home?.kind,home?.townId,Object.keys(home?.rooms||{}),home?.cars?.length,home?.pets?.length]}),ageGroup:c.ageGroup,gender:c.gender,attractedGenders:c.attractedGenders,touchReaction:c.touchReaction,appearanceLevel:c.appearanceLevel,appearanceInterest:c.appearanceInterest,appearanceTags:c.appearanceTags,attractionTraits:c.attractionTraits,personalityTypes:c.personalityTypes,characterTraits:c.characterTraits,traitExpressions:c.traitExpressions,traitNotesInScripts:c.traitNotesInScripts,traitNotes:c.traitNotesInScripts?c.traitNotes:"",bodyProfile:c.bodyProfile,timelineResetAt:c.timelineResetAt,wake:c.wake,wakeHabit:c.wakeHabit,sleep:c.sleep,sleepHabit:c.sleepHabit,job:c.job,jobTitle:c.jobTitle,workplaceId:c.workplaceId,routines:state.routines?.[c.id],hobbies:c.hobbies,interests:c.interests,inventory:c.inventory,foodPreferences:c.foodPreferences,favoriteScentNotes:c.favoriteScentNotes,favoriteStoryGenres:c.favoriteStoryGenres,favoriteVideoGenres:c.favoriteVideoGenres,favoriteGameGenres:c.favoriteGameGenres,favoriteFashionStyles:c.favoriteFashionStyles,drinkTypes:c.drinkTypes,musicGenres:c.musicGenres,socialStyle:c.socialStyle,perceptionStyle:c.perceptionStyle,decisionStyle:c.decisionStyle,planningStyle:c.planningStyle,activityTempo:c.activityTempo,neatness:c.neatness,interference:c.interference,conflictStyle:c.conflictStyle,affectionStyle:c.affectionStyle,energyRhythm:c.energyRhythm,rels:relationList().filter(r=>r.a===c.id||r.b===c.id),views:state.characterViews?.[c.id],townEras:state.towns.map(t=>[t.id,t.era]),places:state.towns.flatMap(t=>(t.places||[]).map(p=>[p.id,p.type,p.stock,p.priceRange,p.spicy,p.sweet]))})}
