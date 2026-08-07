@@ -195,6 +195,185 @@ header{height:106px;display:flex;align-items:center;gap:28px;padding:15px 30px;b
   .log-dialog{padding:18px}.log-dialog img{max-height:48dvh}
 }
 
+/* 홈 화면의 축약 로그는 눌러서 오늘 기록 전문을 읽을 수 있다. */
+.native-log-card>div>span{display:flex;gap:6px}
+.native-log-dialog{
+  width:min(720px,calc(100vw - 20px));
+  max-height:calc(100dvh - 20px);
+  padding:0;
+  overflow:hidden;
+  border:1px solid #ffffff7a;
+  border-radius:26px;
+  background:#fffdf9;
+  color:#2f2924;
+  box-shadow:0 28px 90px #0009;
+}
+.native-log-dialog::backdrop{background:#0b1119cc;backdrop-filter:blur(5px)}
+.native-log-dialog form{display:grid;grid-template-rows:auto minmax(0,1fr) auto;max-height:calc(100dvh - 20px);padding:0}
+.native-log-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:17px 18px;border-bottom:1px solid var(--line)}
+.native-log-dialog-head span{display:grid}.native-log-dialog-head small{color:var(--muted);font-size:10px;letter-spacing:.08em}.native-log-dialog-head h2{margin:2px 0 0}
+.native-log-dialog-head button{width:44px;height:44px;padding:0;font-size:27px}
+.native-log-dialog>form>ol{display:block;max-height:none;margin:0;padding:8px 18px 18px;overflow-y:auto;list-style:none;overscroll-behavior:contain}
+.native-log-dialog>form>ol>li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:13px 0;border-bottom:1px solid var(--line)}
+.native-log-dialog>form>ol>li>span{display:grid;gap:4px}.native-log-dialog time,.native-log-dialog small{color:var(--muted)}.native-log-dialog small{white-space:normal;line-height:1.6}
+.native-log-dialog-close{margin:10px 18px max(14px,env(safe-area-inset-bottom))}
+
+/* 방 이름과 편집 버튼은 같은 상단 묶음에 두어 인물 얼굴을 가리지 않는다. */
+.room-heading{position:relative;z-index:10;display:grid;justify-items:start;gap:4px;width:max-content;max-width:100%}
+.room-heading>b{padding:3px 7px;border-radius:8px;background:#ffffffe0;box-shadow:0 2px 7px #0002}
+.room-heading .room-edit-hint{position:static;right:auto;bottom:auto;min-height:0;padding:4px 8px;border-radius:8px;font-size:10px}
+
+/* 캐릭터 두 명을 자석처럼 조합하는 관계 편집기 */
+.relationship-pair-magnet{
+  display:grid;
+  grid-template-columns:118px minmax(220px,1fr) 118px;
+  align-items:stretch;
+  gap:14px;
+  min-height:360px;
+  margin-top:14px;
+  padding:14px;
+  border-radius:26px;
+  background:linear-gradient(135deg,#e9eef4,#fbf7f2);
+  box-shadow:inset 0 0 0 1px #ffffffc9;
+}
+.relationship-character-rail{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height:360px;
+  padding:140px 8px;
+  overflow-x:hidden;
+  overflow-y:auto;
+  scroll-snap-type:y mandatory;
+  scrollbar-width:none;
+  overscroll-behavior:contain;
+}
+.relationship-character-rail::-webkit-scrollbar{display:none}
+.relationship-character-rail button{
+  flex:0 0 76px;
+  display:grid;
+  place-items:center;
+  gap:2px;
+  min-width:0;
+  padding:6px;
+  border:0;
+  scroll-snap-align:center;
+  background:transparent;
+  opacity:.52;
+  transform:scale(.78);
+  transition:.18s ease;
+}
+.relationship-character-rail button.on{
+  opacity:1;
+  transform:scale(1.08);
+  background:color-mix(in srgb,var(--view-primary) 16%,#fff);
+  box-shadow:0 9px 20px #1e293b24;
+}
+.relationship-character-rail .avatar,.relationship-character-rail .sprite{width:52px;height:52px}
+.relationship-character-rail small{max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.source-rail{border-radius:999px 30px 30px 999px;background:linear-gradient(90deg,#ffffff18,#fff)}
+.target-rail{border-radius:30px 999px 999px 30px;background:linear-gradient(90deg,#fff,#ffffff18)}
+.relationship-pair-core{
+  align-self:center;
+  display:grid;
+  place-items:center;
+  gap:8px;
+  min-width:0;
+  padding:18px 12px;
+  text-align:center;
+}
+.relationship-pair-icons{display:flex;align-items:center;justify-content:center;gap:9px}
+.relationship-pair-icons .avatar,.relationship-pair-icons .sprite{width:72px;height:72px;filter:drop-shadow(0 8px 8px #1720333b)}
+.relationship-pair-icons i{font-size:26px;font-style:normal}
+.relationship-pair-core>small,.relationship-pair-core>span{color:var(--muted)}
+.relationship-pair-core>strong{font-size:20px;line-height:1.35;word-break:keep-all}
+.relationship-pair-core>em{padding:7px 11px;border-radius:999px;background:#fff;font-style:normal;font-weight:800}
+.relationship-pair-core>button{width:min(260px,100%)}
+
+.relationship-map-dialog{
+  width:min(980px,calc(100vw - 20px));
+  max-height:calc(100dvh - 20px);
+  padding:0;
+  overflow:hidden;
+  border:0;
+  border-radius:26px;
+  background:#fffdf9;
+  box-shadow:0 30px 100px #10172299;
+}
+.relationship-map-dialog::backdrop{background:#101722bd;backdrop-filter:blur(4px)}
+.relationship-map-dialog form{max-height:calc(100dvh - 20px);padding:16px;overflow-y:auto}
+.relationship-map-dialog-head{position:sticky;top:-16px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-16px -16px 10px;padding:16px;border-bottom:1px solid var(--line);background:#fffdf9f2;backdrop-filter:blur(10px)}
+.relationship-map-dialog-head span{display:grid}.relationship-map-dialog-head h2{margin:1px 0 0}.relationship-map-dialog-head small{color:var(--muted);font-size:9px;letter-spacing:.1em}
+.relationship-map-dialog-head button{width:44px;height:44px;padding:0;font-size:26px}
+.relationship-color-legend{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.relationship-color-legend span{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#f4efe9;font-size:11px}
+.relationship-color-legend span::before{content:"";width:10px;height:10px;border-radius:50%;background:#777}
+.relationship-color-legend .friendly::before{background:#3f83c7}.relationship-color-legend .romantic::before{background:#ef6f9d}.relationship-color-legend .love::before{background:#d52b68}.relationship-color-legend .devoted::before{background:#b70f52}
+.relationship-map{margin:12px 0 0;padding:0;overflow:hidden}
+.relationship-map-scroll{width:100%;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.relationship-map-dialog .relationship-map-canvas{width:900px;min-width:900px}
+
+@media(max-width:720px){
+  /* 집의 방 개수에 따라 한 화면 크기의 평면을 같은 비율로 더 잘게 나눈다. */
+  .native-app[data-active-tab="home"] main{padding:7px!important}
+  .native-app[data-active-tab="home"] .home-page>.title{gap:7px;margin-bottom:6px}
+  .native-app[data-active-tab="home"] .home-page>.title>div:first-child p{display:none}
+  .native-app[data-active-tab="home"] .home-page>.title h1{font-size:23px}
+  .native-app[data-active-tab="home"] .home-top-actions button{min-height:38px;padding:7px 10px;font-size:12px}
+  .native-app[data-active-tab="home"] .home-tabs{flex-wrap:nowrap;margin:5px 0 8px;padding-bottom:3px;overflow-x:auto}
+  .native-app[data-active-tab="home"] .home-tabs button{flex:0 0 150px;min-width:150px;min-height:48px;padding:7px 10px;font-size:13px}
+  .native-app[data-active-tab="home"] .home{padding:8px;border-radius:21px}
+  .native-app[data-active-tab="home"] .home>.title{margin-bottom:4px}
+  .native-app[data-active-tab="home"] .clean{margin:6px 0;padding:7px 9px;font-size:11px}
+  .native-app[data-active-tab="home"] .clean i{height:6px;margin-top:4px}
+  .native-app[data-active-tab="home"] .rooms,
+  .native-app[data-active-tab="home"] .rooms.has-extra{
+    display:grid;
+    grid-template-columns:repeat(var(--room-cols),minmax(0,1fr));
+    grid-template-rows:repeat(var(--room-rows),minmax(0,1fr));
+    grid-auto-flow:row;
+    width:100%;
+    height:calc(100dvh - 118px);
+    min-height:560px;
+    max-height:820px;
+    aspect-ratio:auto;
+    gap:4px;
+    padding:4px;
+    overflow:hidden;
+    border-radius:22px;
+  }
+  .native-app[data-active-tab="home"] .rooms>.room{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    min-width:0;
+    min-height:0;
+    padding:5px;
+    border-width:3px;
+  }
+  .native-app[data-active-tab="home"] .room-heading{gap:2px}
+  .native-app[data-active-tab="home"] .room-heading>b{max-width:100%;padding:2px 5px;overflow:hidden;font-size:clamp(11px,3.3vw,16px);text-overflow:ellipsis;white-space:nowrap}
+  .native-app[data-active-tab="home"] .room-heading .room-edit-hint{padding:3px 6px;font-size:8px}
+  .native-app[data-active-tab="home"] .room-people{left:4px;right:4px;bottom:4px;max-height:calc(100% - 50px)}
+  .native-app[data-active-tab="home"] .home-person .avatar{width:40px;height:40px}
+  .native-app[data-active-tab="home"] .home-person .sprite{width:46px;height:46px}
+  .native-app[data-active-tab="home"] .home-person span{max-width:82px;padding:4px 6px;font-size:10px}
+  .native-app[data-active-tab="home"] .home-person span small{display:none}
+  .native-app[data-active-tab="home"] .room-pet-status small{display:none}
+
+  .relationship-pair-magnet{grid-template-columns:minmax(68px,82px) minmax(126px,1fr) minmax(68px,82px);gap:4px;min-height:330px;margin-inline:-6px;padding:7px}
+  .relationship-character-rail{max-height:330px;padding:127px 3px;gap:8px}
+  .relationship-character-rail button{flex-basis:68px;padding:3px}
+  .relationship-character-rail .avatar,.relationship-character-rail .sprite{width:48px;height:48px}
+  .relationship-character-rail small{max-width:65px;font-size:8px}
+  .relationship-pair-core{gap:6px;padding:10px 2px}
+  .relationship-pair-icons{gap:3px}.relationship-pair-icons .avatar,.relationship-pair-icons .sprite{width:51px;height:51px}.relationship-pair-icons i{font-size:18px}
+  .relationship-pair-core>strong{font-size:15px}.relationship-pair-core>small,.relationship-pair-core>span,.relationship-pair-core>em{font-size:9px}.relationship-pair-core>em{padding:5px 7px}
+  .relationship-pair-core>button{min-height:38px;padding:6px 5px;font-size:10px}
+  .relationship-map-dialog .relationship-map-canvas{width:720px;min-width:720px}
+  .relationship-map-dialog form{padding:12px}.relationship-map-dialog-head{top:-12px;margin:-12px -12px 8px;padding:12px}
+}
+
 /* 아이콘형 세계관 취향 도감 */
 .catalog-dex-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:14px}
 .catalog-dex-card{border:1px solid var(--line);border-radius:18px;background:#f8fafc;overflow:hidden}
@@ -806,6 +985,14 @@ body,button,input,select,small,b,p,span{word-break:keep-all;overflow-wrap:break-
   filter:drop-shadow(0 18px 12px #0008);
 }
 .native-app .native-character-stage .avatar.native-main-character{object-fit:cover;background:var(--native-own)}
+.native-app .native-character-stage span.avatar.native-main-character{
+  width:min(44vw,180px)!important;
+  height:min(44vw,180px)!important;
+  border:4px solid #ffffffd9;
+  border-radius:50%;
+  font-size:64px;
+  box-shadow:0 18px 36px #0007,inset 0 1px 0 #ffffff55;
+}
 .native-app .native-character-stage i{
   position:absolute;
   left:12%;
@@ -937,4 +1124,291 @@ body,button,input,select,small,b,p,span{word-break:keep-all;overflow-wrap:break-
   html:not(.native-app) .roster-card>.roster-info small{max-width:135px!important;font-size:11px!important}
   html:not(.native-app) .char-sort-row .char-row{min-height:86px;padding:10px 12px}
   html:not(.native-app) .char-row .avatar,html:not(.native-app) .char-row .sprite{width:56px;height:56px}
+}
+
+/* 모바일 홈: 장소 사진을 선명하게 두고 캐릭터만 또렷하게 떠오르게 한다. */
+.native-app .native-observe-backdrop{
+  inset:0;
+  filter:none;
+  transform:none;
+  background-position:center;
+  background-size:cover;
+}
+.native-app .native-observe-shade{
+  inset:0;
+  background:linear-gradient(180deg,#0d142052 0%,#0d142015 38%,#0d14206e 66%,#0d1420e8 100%);
+}
+.native-app .native-character-stage::before{
+  content:"";
+  position:absolute;
+  inset:8% -20% 0;
+  z-index:0;
+  border-radius:50%;
+  background:radial-gradient(circle,#ffffff5e 0%,#ffffff1f 36%,transparent 70%);
+  filter:blur(9px);
+}
+
+/* 새 모바일 마을 화면의 데스크톱 기본값 */
+.mobile-town-shell{display:contents}
+.mobile-town-hud,.mobile-town-tools,.mobile-town-switcher,.mobile-town-character-card,.mobile-town-sheet-head{display:none}
+
+/* 모바일 하위 페이지도 홈과 같은 앱 카드 문법으로 정리 */
+@media(max-width:720px){
+  .native-app:not([data-active-tab="observe"]):not([data-active-tab="town"]) body{
+    background:linear-gradient(180deg,color-mix(in srgb,var(--p) 72%,#111a27) 0 150px,#f4efe8 360px);
+  }
+  .native-app:not([data-active-tab="observe"]):not([data-active-tab="town"]) main{
+    min-height:calc(100dvh - 60px);
+    padding:12px 10px max(24px,env(safe-area-inset-bottom))!important;
+    background:transparent;
+  }
+  .native-app:not([data-active-tab="observe"]):not([data-active-tab="town"]) main>.panel,
+  .native-app:not([data-active-tab="observe"]):not([data-active-tab="town"]) .editor>.panel,
+  .native-app:not([data-active-tab="observe"]):not([data-active-tab="town"]) .editor>.form{
+    border-color:#ffffffb8;
+    border-radius:24px;
+    box-shadow:0 16px 36px #111a2726;
+  }
+  .native-app:not([data-active-tab="observe"]):not([data-active-tab="town"]) button{
+    min-height:44px;
+    border-radius:14px;
+  }
+  .native-app:not([data-active-tab="observe"]):not([data-active-tab="town"]) .title h1{
+    font-size:clamp(25px,8vw,34px);
+  }
+}
+
+/* 모바일 마을: 세로 화면 전체를 지도에 쓰고 좌우로만 이동한다. */
+@media(max-width:720px){
+  html.native-app[data-active-tab="town"],
+  html.native-app[data-active-tab="town"] body{
+    width:100%;
+    height:100%;
+    overflow:hidden!important;
+    overscroll-behavior:none;
+    background:#17212b;
+  }
+  .native-app[data-active-tab="town"] .native-sub-header{
+    position:fixed;
+    top:env(safe-area-inset-top);
+    left:0;
+    right:0;
+    z-index:240;
+    border:0;
+    background:linear-gradient(180deg,#101722d9,#10172200);
+    box-shadow:none;
+  }
+  .native-app[data-active-tab="town"] main{
+    width:100vw;
+    height:100dvh;
+    min-height:0;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-shell{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    display:block;
+    width:100vw;
+    height:100dvh;
+    overflow:hidden;
+    background:#17212b;
+  }
+  .native-app[data-active-tab="town"] .town-tabs{display:none!important}
+  .native-app[data-active-tab="town"] .town-edit{
+    display:block!important;
+    width:100vw;
+    height:100dvh;
+    margin:0;
+    overflow:hidden!important;
+  }
+  .native-app[data-active-tab="town"] .town-map-scroll{
+    position:absolute;
+    inset:0;
+    width:100vw;
+    height:100dvh;
+    min-height:0;
+    margin:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    border-radius:0;
+    overscroll-behavior-x:contain;
+    touch-action:pan-x;
+    scrollbar-width:none;
+  }
+  .native-app[data-active-tab="town"] .town-map-scroll::-webkit-scrollbar{display:none}
+  .native-app[data-active-tab="town"] .town-map-scroll>.world{
+    width:max(1200px,177.78dvh);
+    min-width:max(1200px,177.78dvh);
+    height:100dvh;
+    min-height:100dvh;
+    aspect-ratio:16/9;
+    touch-action:pan-x;
+  }
+  .native-app[data-active-tab="town"] .town-map-scroll .world-bg{object-fit:cover}
+  .native-app[data-active-tab="town"] .mobile-town-hud{
+    position:fixed;
+    top:calc(env(safe-area-inset-top) + 64px);
+    left:12px;
+    right:12px;
+    z-index:210;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    pointer-events:none;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-hud>span{
+    display:grid;
+    min-width:0;
+    padding:8px 12px;
+    border:1px solid #ffffff35;
+    border-radius:16px;
+    background:#111923b8;
+    color:#fff;
+    box-shadow:0 9px 24px #0004;
+    backdrop-filter:blur(9px);
+  }
+  .native-app[data-active-tab="town"] .mobile-town-hud small{color:#ffffffa8;font-size:9px}
+  .native-app[data-active-tab="town"] .mobile-town-hud b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .native-app[data-active-tab="town"] .mobile-town-hud button{
+    min-height:44px;
+    padding:9px 13px;
+    border-color:#ffffff42;
+    background:#111923d9;
+    color:#fff;
+    box-shadow:0 9px 24px #0004;
+    pointer-events:auto;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-hud button.on{background:var(--grad)}
+  .native-app[data-active-tab="town"] .mobile-town-tools{
+    position:fixed;
+    top:calc(env(safe-area-inset-top) + 122px);
+    right:12px;
+    z-index:215;
+    display:grid;
+    gap:7px;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-tools button{
+    min-height:40px;
+    padding:8px 11px;
+    border-color:#ffffff3b;
+    background:#111923dd;
+    color:#fff;
+    box-shadow:0 8px 20px #0004;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-switcher{
+    position:fixed;
+    left:50%;
+    bottom:max(12px,env(safe-area-inset-bottom));
+    z-index:205;
+    display:flex;
+    gap:6px;
+    max-width:calc(100vw - 28px);
+    padding:6px;
+    overflow-x:auto;
+    transform:translateX(-50%);
+    border:1px solid #ffffff2e;
+    border-radius:18px;
+    background:#111923d6;
+    box-shadow:0 10px 28px #0006;
+    backdrop-filter:blur(10px);
+    scrollbar-width:none;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-switcher button{
+    flex:0 0 auto;
+    min-height:36px;
+    padding:7px 11px;
+    border-color:transparent;
+    background:transparent;
+    color:#ffffffbd;
+    font-size:11px;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-switcher button.on{background:#fff;color:#17212b}
+  .native-app[data-active-tab="town"] .mobile-town-character-card{
+    position:fixed;
+    left:12px;
+    right:12px;
+    bottom:72px;
+    z-index:200;
+    display:grid;
+    grid-template-columns:52px minmax(0,1fr);
+    align-items:center;
+    gap:9px;
+    min-height:70px;
+    padding:8px 11px;
+    border:1px solid #ffffff35;
+    border-radius:20px;
+    background:#111923d8;
+    color:#fff;
+    text-align:left;
+    box-shadow:0 12px 30px #0006;
+    backdrop-filter:blur(10px);
+  }
+  .native-app[data-active-tab="town"] .mobile-town-character-card .avatar,
+  .native-app[data-active-tab="town"] .mobile-town-character-card .sprite{width:48px;height:48px}
+  .native-app[data-active-tab="town"] .mobile-town-character-card>span{display:grid;min-width:0}
+  .native-app[data-active-tab="town"] .mobile-town-character-card small{color:#ffffff96;font-size:9px}
+  .native-app[data-active-tab="town"] .mobile-town-character-card b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+  .native-app[data-active-tab="town"] .mobile-town-character-card em{overflow:hidden;color:#ffffffb5;font-size:10px;font-style:normal;text-overflow:ellipsis;white-space:nowrap}
+  .native-app[data-active-tab="town"] .mobile-town-shell:not(.editing) .town-map-scroll .place{touch-action:pan-x;cursor:default}
+  .native-app[data-active-tab="town"] .mobile-town-shell.editing .town-map-scroll .place{
+    cursor:grab;
+    filter:drop-shadow(0 0 8px #fff);
+  }
+  .native-app[data-active-tab="town"] .mobile-town-shell.editing .map-place-label{color:#000}
+  .native-app[data-active-tab="town"] .town-editor-panel{display:none!important}
+  .native-app[data-active-tab="town"] .mobile-town-shell.sheet-open::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:220;
+    background:#0d142077;
+    backdrop-filter:blur(2px);
+  }
+  .native-app[data-active-tab="town"] .mobile-town-shell.sheet-open .town-editor-panel{
+    position:fixed;
+    left:8px;
+    right:8px;
+    bottom:max(8px,env(safe-area-inset-bottom));
+    z-index:230;
+    display:block!important;
+    width:auto;
+    max-height:76dvh;
+    margin:0;
+    padding:14px;
+    overflow-y:auto;
+    border:1px solid #ffffffb8;
+    border-radius:25px;
+    background:#fffdf9f5;
+    box-shadow:0 24px 65px #0007;
+    overscroll-behavior:contain;
+  }
+  .native-app[data-active-tab="town"] .mobile-town-sheet-head{
+    position:sticky;
+    top:-14px;
+    z-index:5;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin:-14px -14px 14px;
+    padding:14px;
+    border-bottom:1px solid var(--line);
+    background:#fffdf9f5;
+    backdrop-filter:blur(10px);
+  }
+  .native-app[data-active-tab="town"] .mobile-town-sheet-head>span{display:grid}
+  .native-app[data-active-tab="town"] .mobile-town-sheet-head small{color:var(--muted);font-size:9px}
+  .native-app[data-active-tab="town"] .mobile-town-sheet-head b{font-size:20px}
+  .native-app[data-active-tab="town"] .mobile-town-sheet-head button{width:42px;height:42px;padding:0;font-size:25px}
+  .native-app[data-active-tab="town"] .mobile-town-shell.world-panel .place-editor{display:none}
+  .native-app[data-active-tab="town"] .mobile-town-shell.place-panel .town-general-editor{display:none}
+  .native-app[data-active-tab="town"] .mobile-town-shell.place-panel .place-editor details:not(.mobile-selected){display:none}
+  .native-app[data-active-tab="town"] .mobile-town-shell.place-panel .place-editor{margin:0}
+  .native-app[data-active-tab="town"] .mobile-town-shell.place-panel .place-editor details.mobile-selected{display:block;padding:0;border:0;background:transparent}
+  .native-app[data-active-tab="town"] .mobile-town-shell.place-panel .place-editor details.mobile-selected>summary{display:none}
+  .native-app[data-active-tab="town"] .town-general-editor{display:grid;gap:12px}
+  .native-app[data-active-tab="town"] .town-general-editor>label{display:grid;gap:6px}
 }

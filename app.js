@@ -1,7 +1,7 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260807b";
-import {eventFor} from "./simulation.js?v=20260807b";
-import {renderApp, setAccountLabel, setAccountEntitlements} from "./views.js?v=20260807b";
-import {recordCharacterInteraction} from "./state.js?v=20260807b";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, addPet, updatePet, deletePet, setPetImage, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260807e";
+import {eventFor} from "./simulation.js?v=20260807e";
+import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel} from "./views.js?v=20260807e";
+import {recordCharacterInteraction} from "./state.js?v=20260807e";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -511,6 +511,8 @@ function renderMaintenance(){
 
 function render(){
   try{
+    const mobileSite=window.matchMedia?.("(max-width:720px)")?.matches??window.innerWidth<=720;
+    document.documentElement.classList.toggle("native-app",Boolean(window.DRAWER_VILLAGE_NATIVE)||mobileSite);
     document.documentElement.dataset.uiFont=state.uiFont||"system";
     if(maintenanceEnabled()){renderMaintenance();return}
     document.body.classList.remove("maintenance-mode");
@@ -524,6 +526,7 @@ function render(){
     }
     bind();
     applyTheme();
+    requestAnimationFrame(centerRelationshipSelectors);
     requestAnimationFrame(showOnboarding);
     requestAnimationFrame(showSetupCoach);
     requestAnimationFrame(()=>document.querySelectorAll(".life-log ol").forEach(log=>{log.scrollTop=log.scrollHeight}));
@@ -579,6 +582,20 @@ async function explicitSave(label="저장 완료"){
 
 function bind(){
   $$("[data-tab]").forEach(el=>el.onclick=()=>navigateToTab(el.dataset.tab));
+  $("[data-open-native-log]")?.addEventListener("click",()=>document.querySelector("[data-native-log-dialog]")?.showModal());
+  $$("[data-home-character]").forEach(el=>el.onclick=event=>{
+    event.stopPropagation();
+    setActive(el.dataset.homeCharacter);
+    render();
+  });
+  $("[data-mobile-town-edit-toggle]")?.addEventListener("click",()=>{
+    const editing=document.querySelector(".mobile-town-shell")?.classList.contains("editing");
+    setMobileTownEditing(!editing);
+    render();
+  });
+  $("[data-mobile-town-settings]")?.addEventListener("click",()=>{setMobileTownPanel("world");render()});
+  $("[data-mobile-town-close]")?.addEventListener("click",()=>{setMobileTownPanel("");render()});
+  $$("[data-mobile-town-character]").forEach(el=>el.onclick=()=>{setActive(el.dataset.mobileTownCharacter);render();centerMobileTownMap(el.dataset.mobileTownCharacter)});
   try{enhanceDynamicForms()}catch(error){console.error("동적 편집 화면 연결 실패",error)}
   const cartKey="drawer-village-cart";
   const readCart=()=>{try{return JSON.parse(localStorage.getItem(cartKey)||"{}")||{}}catch{return {}}};
@@ -799,7 +816,7 @@ function bind(){
     el.addEventListener(eventName,()=>{
       const bodyProfile=structuredClone(active().bodyProfile||{});
       setNestedValue(bodyProfile,el.dataset.bodyField,el.value);
-      updateCharacter(active().id,{bodyProfile},false);save();
+      updateCharacter(active().id,{bodyProfile},false);save(el.tagName==="SELECT");
     });
   });
   $$("[data-body-list]").forEach(el=>el.onclick=()=>{
@@ -818,6 +835,7 @@ function bind(){
       "성별과 무관하게 끌림":["남성","여성","그외"],"그외 성별에게 끌림":["그외"]
     }[el.value]||["없음"];
     updateCharacter(active().id,patch,false);
+    save(el.tagName==="SELECT");
     if(el.dataset.levels){
       const labelSets={
         spice:["안 매움","살짝 매콤","순한맛","보통 라면 맵기","매운맛","아주 매운맛"],
@@ -831,8 +849,8 @@ function bind(){
       el.closest("label")?.querySelector("[data-range-label]")?.replaceChildren(document.createTextNode(labels[Number(el.value)]));
     }
   });
-  $$("[data-color]").forEach(el=>el.oninput=()=>{updateCharacter(active().id,{theme:{...active().theme,[el.dataset.color]:el.value}},false);applyTheme()});
-  $("[data-gradient]")?.addEventListener("change",e=>{updateCharacter(active().id,{theme:{...active().theme,gradient:e.target.checked}},false);applyTheme()});
+  $$("[data-color]").forEach(el=>el.oninput=()=>{updateCharacter(active().id,{theme:{...active().theme,[el.dataset.color]:el.value}},false);save();applyTheme()});
+  $("[data-gradient]")?.addEventListener("change",e=>{updateCharacter(active().id,{theme:{...active().theme,gradient:e.target.checked}},false);save(true);applyTheme()});
   $$("[data-chip]").forEach(el=>el.onclick=()=>{toggleChip(active().id,el.dataset.chip,el.dataset.value);render()});
   $$("[data-favorite-kind]").forEach(el=>el.onclick=()=>{toggleFavorite(active().id,el.dataset.favoriteKind,el.dataset.favoriteId);render()});
   $$("[data-owned-kind]").forEach(el=>el.onclick=()=>{toggleOwned(active().id,el.dataset.ownedKind,el.dataset.ownedId);render()});
@@ -932,6 +950,7 @@ function bind(){
         const card=document.querySelector(`.place[data-place="${CSS.escape(el.dataset.placeId)}"]`);
         card?.style.setProperty("--place-scale",el.value);
       }
+      save(el.tagName==="SELECT");
     };
     el.oninput=apply;el.onchange=apply;
   });
@@ -958,22 +977,41 @@ function bind(){
     }
     state.world.era=e.target.value;save(true);render();showToast(e.target.value==="medieval"?"이 마을에 중세 생활 스크립트가 적용됩니다":"이 마을을 현대 시대로 바꿨습니다");
   });
-  $$("[data-town-select]").forEach(el=>el.onclick=()=>{switchTown(el.dataset.townSelect);render()});
+  $$("[data-town-select]").forEach(el=>el.onclick=()=>{setMobileTownPanel("");switchTown(el.dataset.townSelect);render();centerMobileTownMap()});
   $("[data-add-town]")?.addEventListener("click",()=>{const limit=townLimit();if(!addTown(limit))showToast(`현재 마을 슬롯은 ${limit}개까지예요`);render()});
   $$("[data-delete-town]").forEach(el=>el.onclick=()=>{if(confirm("이 마을을 삭제할까요?")){deleteTown(el.dataset.deleteTown);render()}});
-  $("[data-add-place]")?.addEventListener("click",()=>{addPlace();render()});
+  $$("[data-add-place]").forEach(el=>el.addEventListener("click",()=>{
+    const before=new Set(state.world.places.map(place=>place.id));
+    addPlace();
+    const added=state.world.places.find(place=>!before.has(place.id));
+    if(added)setMobileTownPanel(added.id);
+    render();
+  }));
   const addPlaceButton=$("[data-add-place]");
   $("[data-add-rel]")?.addEventListener("click",()=>openRelationDialog());
   $$("[data-edit-rel]").forEach(el=>el.onclick=()=>openRelationDialog(el.dataset.editRel));
   $$("[data-view-source]").forEach(button=>button.onclick=()=>{
     state.characterViewSource=button.dataset.viewSource;
-    save();
-    $$("[data-view-source]").forEach(item=>item.classList.toggle("on",item===button));
-    $$("[data-view-panel]").forEach(panel=>panel.hidden=panel.dataset.viewPanel!==button.dataset.viewSource);
+    if(state.characterViewTarget===state.characterViewSource||!state.characters[state.characterViewTarget]){
+      state.characterViewTarget=state.order.find(id=>id!==state.characterViewSource)||"";
+    }
+    save(true);
+    render();
+  });
+  $$("[data-view-target]").forEach(button=>button.onclick=()=>{
+    if(button.dataset.viewTarget===state.characterViewSource)return;
+    state.characterViewTarget=button.dataset.viewTarget;
+    save(true);
+    render();
   });
   $$("[data-open-view-dialog]").forEach(button=>button.onclick=()=>{
     const dialog=document.querySelector(`[data-view-dialog="${CSS.escape(button.dataset.openViewDialog)}"]`);
     dialog?.showModal();
+  });
+  $("[data-open-relationship-map]")?.addEventListener("click",openRelationshipMap);
+  $("[data-refresh-relationship-map]")?.addEventListener("click",()=>{
+    render();
+    requestAnimationFrame(openRelationshipMap);
   });
   $$("[data-character-view]").forEach(select=>select.onchange=()=>{
     const source=select.dataset.source,target=select.dataset.target,field=select.dataset.viewField;
@@ -1053,10 +1091,51 @@ function applyImage(type,id,room,data){
 
 function navigateToTab(tab){
   if(!["observe","home","character","catalog","relationship","routine","town","shop","settings"].includes(tab))return;
+  if(tab==="home"){
+    const character=active(),current=character?eventFor(character):null;
+    const currentHomeId=current?.home?(current.visitHomeId||character?.homeId):character?.homeId;
+    if(currentHomeId&&state.homes[currentHomeId])setActiveHome(currentHomeId);
+  }
   state.activeTab=tab;
   save();
   render();
+  if(tab==="town")centerMobileTownMap();
+  if(tab==="relationship")centerRelationshipSelectors();
   window.scrollTo({top:0,behavior:"auto"});
+}
+
+function centerMobileTownMap(characterId=state.activeId){
+  if(!document.documentElement.classList.contains("native-app"))return;
+  requestAnimationFrame(()=>{
+    const scroller=document.querySelector(".town-map-scroll"),world=scroller?.querySelector(".world");
+    if(!scroller||!world)return;
+    const character=state.characters[characterId],entry=character?eventFor(character):null;
+    const place=entry?.placeId?state.world.places.find(item=>item.id===entry.placeId):null;
+    const ratio=place?Math.max(0,Math.min(1,Number(place.x||50)/100)):.5;
+    const target=world.scrollWidth*ratio-scroller.clientWidth/2;
+    scroller.scrollTo({left:Math.max(0,target),behavior:"smooth"});
+  });
+}
+
+function centerRelationshipSelectors(){
+  if(state.activeTab!=="relationship")return;
+  requestAnimationFrame(()=>{
+    document.querySelectorAll(".relationship-character-rail").forEach(rail=>{
+      const selected=rail.querySelector("button.on");
+      if(!selected)return;
+      rail.scrollTo({top:Math.max(0,selected.offsetTop-(rail.clientHeight-selected.offsetHeight)/2),behavior:"auto"});
+    });
+  });
+}
+
+function openRelationshipMap(){
+  const dialog=document.querySelector("[data-relationship-map-dialog]");
+  if(!dialog)return;
+  if(!dialog.open)dialog.showModal();
+  requestAnimationFrame(()=>{
+    const scroller=dialog.querySelector(".relationship-map-scroll");
+    if(scroller)scroller.scrollLeft=Math.max(0,(scroller.scrollWidth-scroller.clientWidth)/2);
+  });
 }
 
 async function useImageUrl(type,id,room){
@@ -1466,14 +1545,20 @@ function openRelationDialog(id=""){
 }
 
 function bindPlaceDrag(){
+  const mobile=document.documentElement.classList.contains("native-app");
+  const editing=document.querySelector(".mobile-town-shell")?.classList.contains("editing");
+  if(mobile&&!editing)return;
   $$(".town-edit .place").forEach(el=>el.onpointerdown=e=>{
     e.preventDefault();
+    let moved=false;
+    const pointerStart={x:e.clientX,y:e.clientY};
     const startRect=el.getBoundingClientRect();
     const grabX=(e.clientX-(startRect.left+startRect.width/2))/startRect.width;
     const grabY=(e.clientY-(startRect.top+startRect.height/2))/startRect.height;
     el.setPointerCapture(e.pointerId);
     el.classList.add("dragging");
     el.onpointermove=ev=>{
+      if(Math.hypot(ev.clientX-pointerStart.x,ev.clientY-pointerStart.y)>5)moved=true;
       const box=el.parentElement.getBoundingClientRect();
       const currentRect=el.getBoundingClientRect();
       movePlace(el.dataset.place,
@@ -1482,7 +1567,15 @@ function bindPlaceDrag(){
       const p=state.world.places.find(x=>x.id===el.dataset.place);
       el.style.left=p.x+"%";el.style.top=p.y+"%";
     };
-    const finish=()=>{el.onpointermove=null;el.classList.remove("dragging");save()};
+    const finish=()=>{
+      el.onpointermove=null;
+      el.classList.remove("dragging");
+      save();
+      if(mobile&&!moved){
+        setMobileTownPanel(el.dataset.place);
+        render();
+      }
+    };
     el.onpointerup=finish;el.onpointercancel=finish;
   });
 }
@@ -1538,6 +1631,8 @@ document.addEventListener("change",event=>{
     catch(error){console.warn("자동 동기화를 다음 변경 때 다시 시도합니다.",error)}
   },1500);
 });
+const mobileSiteQuery=window.matchMedia?.("(max-width:720px)");
+mobileSiteQuery?.addEventListener?.("change",()=>render());
 render();
 if(!maintenanceEnabled())showInstallButton();
 if(!maintenanceEnabled()&&state.order.length&&localStorage.getItem("drawer-village-hide-photo-backup-notice")!=="1"&&localStorage.getItem("parallel-city-hide-photo-backup-notice")!=="1"){
@@ -1547,13 +1642,13 @@ if(!maintenanceEnabled()&&state.order.length&&localStorage.getItem("drawer-villa
   document.body.append(notice);notice.showModal();
 }
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260807b").catch(error=>{
+  import("./auth.js?v=20260807e").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260807b",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260807e",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();
