@@ -1,7 +1,7 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260808c";
-import {eventFor} from "./simulation.js?v=20260808c";
-import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel} from "./views.js?v=20260808c";
-import {recordCharacterInteraction} from "./state.js?v=20260808c";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260808f";
+import {eventFor} from "./simulation.js?v=20260808f";
+import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel} from "./views.js?v=20260808f";
+import {recordCharacterInteraction} from "./state.js?v=20260808f";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -17,7 +17,7 @@ const PAGE_GUIDES={
   home:["집","위에서 집을 고르고 ‘집 편집’을 켜세요. 한 줄 도구의 ‘방 추가·구성’에서 방을 늘리고, 방 자체를 누르면 이름·크기·사진·가구를 바꿀 수 있어요."],
   character:["캐릭터","위쪽에서 캐릭터를 고른 뒤 아래 항목 중 바꾸려는 설정을 누르세요. 프로필 내보내기는 캐릭터 이름 옆에서 바로 할 수 있고, 사진·아이콘·테마에서는 이미지와 대표색을 관리해요."],
   catalog:["취향 사전","음식, 작품, 음악, 향과 소지품을 등록하는 도감이에요. 직접 올린 사진은 동그랗게, 사이트 일러스트는 투명 배경과 원본 비율로 보이며 실제 생활 장면에도 연결됩니다."],
-  relationship:["관계","왼쪽 룰렛에서 마음의 주체를, 오른쪽 룰렛에서 상대를 고르세요. 공식 관계의 구성원 순서는 두 명의 좌우 배치와 여러 명이 함께 만나는 장면에 그대로 적용됩니다."],
+  relationship:["관계","먼저 마음을 보는 사람을 고른 뒤, 그 마음이 향하는 대상을 선택하세요. ‘OO가 OO을 OO으로 여김’ 문장으로 방향을 바로 확인할 수 있어요."],
   routine:["주간 루틴","일요일부터 토요일까지 한 화면에서 보고, 일정을 눌러 편집해요. 출근·데이트·약속처럼 시간이 정해진 행동은 무작위 생활 장면보다 먼저 적용됩니다."],
   town:["마을","평소에는 캐릭터 위치를 관찰하고, 편집 모드를 켠 뒤에만 건물을 옮기거나 정보를 바꿀 수 있어요. 건물을 누르면 편집 창이 열립니다."],
   shop:["상점","캐릭터·마을 슬롯과 개발 응원을 장바구니에 담는 화면이에요. 구매하지 않아도 이미 만든 캐릭터와 데이터가 임의로 사라지지 않습니다."],
@@ -546,7 +546,10 @@ function openRoomEditor(homeId,roomKey){
   const drawFurniture=()=>{const list=ROOM_EDITOR_FURNITURE[room.type]||ROOM_EDITOR_FURNITURE.other;return list.map(item=>`<button type="button" data-room-furniture="${item}" class="${(room.furniture||[]).includes(item)?"on":""}">${item}</button>`).join("")};
   const interiorStyles=["설정하지 않음","미니멀","모던","북유럽풍","유럽풍","클래식","빈티지","인더스트리얼","한옥풍","일본식","지중해풍","맥시멀","아기자기","자연친화","고딕","미래적","기타"];
   dialog.innerHTML=`<form method="dialog"><div class="title"><div><small>방 편집</small><h2>${room.name||"방"}</h2></div><button value="close">×</button></div><div class="room-editor-fields"><label>방 이름<input name="name" value="${String(room.name||"방").replace(/"/g,"&quot;")}"></label><label>방 유형<select name="type">${Object.entries(ROOM_EDITOR_TYPES).map(([value,label])=>`<option value="${value}" ${room.type===value?"selected":""}>${label}</option>`).join("")}</select></label><label>방 크기<select name="size">${["작은 방","보통 방","큰 방","넓고 긴 방"].map(value=>`<option ${value===(room.size||"보통 방")?"selected":""}>${value}</option>`).join("")}</select><small>크기에 맞춰 다른 방과 겹치지 않게 자동 배치돼요.</small></label><label>인테리어 스타일<select name="interiorStyle">${interiorStyles.map(value=>`<option ${value===(room.interiorStyle||"설정하지 않음")?"selected":""}>${value}</option>`).join("")}</select><small>가끔 공간의 무드와 캐릭터의 기분 묘사에 반영돼요.</small></label></div><button type="button" class="room-editor-photo" data-edit-room-photo>${room.image?`<span style="background-image:url('${room.image}')"></span><b>방 사진 변경</b>`:"<span>＋</span><b>방 사진 추가하기</b>"}</button><div class="room-editor-furniture-wrap"><b>이 방에 있는 가구</b><p class="room-editor-note">장면에 실제로 등장할 수 있는 가구만 선택해 주세요. 주민의 취미가 맞으면 능숙하게 즐기고, 낯선 취미라면 서툴게 시도하거나 관심 없이 지나쳐요.</p><div class="room-editor-furniture">${drawFurniture()}</div></div><div class="crop-actions"><button type="button" class="danger" data-room-delete>방 삭제</button><button class="primary" value="save">완료</button></div></form>`;
-  const sync=()=>{updateRoom(homeId,roomKey,{name:dialog.querySelector('[name="name"]').value.trim()||"방",size:dialog.querySelector('[name="size"]').value,interiorStyle:dialog.querySelector('[name="interiorStyle"]').value});const nextType=dialog.querySelector('[name="type"]').value;if(nextType!==room.type)setRoomType(homeId,roomKey,nextType)};
+  const titleToneField=document.createElement("label");
+  titleToneField.innerHTML=`방 제목 색<select name="titleTone"><option value="light" ${room.titleTone!=="dark"?"selected":""}>밝은 글자</option><option value="dark" ${room.titleTone==="dark"?"selected":""}>어두운 글자</option></select><small>사진 밝기에 맞춰 방 이름이 잘 보이는 쪽을 고르세요.</small>`;
+  dialog.querySelector(".room-editor-fields").insertBefore(titleToneField,dialog.querySelector('[name="type"]').closest("label"));
+  const sync=()=>{updateRoom(homeId,roomKey,{name:dialog.querySelector('[name="name"]').value.trim()||"방",size:dialog.querySelector('[name="size"]').value,interiorStyle:dialog.querySelector('[name="interiorStyle"]').value,titleTone:dialog.querySelector('[name="titleTone"]').value});const nextType=dialog.querySelector('[name="type"]').value;if(nextType!==room.type)setRoomType(homeId,roomKey,nextType)};
   dialog.querySelector('[name="type"]').onchange=()=>{sync();dialog.close();openRoomEditor(homeId,roomKey)};
   dialog.querySelector("[data-edit-room-photo]").onclick=()=>{sync();dialog.returnValue="photo";dialog.close();openRoomImageMenu(homeId,roomKey,{returnToEditor:true})};
   dialog.querySelectorAll("[data-room-furniture]").forEach(button=>button.onclick=()=>{toggleFurniture(homeId,roomKey,button.dataset.roomFurniture);button.classList.toggle("on")});
@@ -850,6 +853,40 @@ function bind(){
   const cartKey="drawer-village-cart";
   const readCart=()=>{try{return JSON.parse(localStorage.getItem(cartKey)||"{}")||{}}catch{return {}}};
   const writeCart=cart=>{localStorage.setItem(cartKey,JSON.stringify(cart));render()};
+  const playButtons=$$("[data-play-purchase]");
+  playButtons.forEach(button=>button.onclick=async()=>{
+    const productId=button.dataset.playPurchase;
+    button.disabled=true;
+    const original=button.textContent;
+    button.textContent="Google Play 결제 준비 중…";
+    try{
+      await window.DrawerVillagePlayBilling?.purchase?.(productId);
+      showToast("Google Play 구매와 상품 지급을 확인했습니다");
+      render();
+    }catch(error){
+      console.error(error);
+      showToast(error?.message||"Google Play 결제를 완료하지 못했습니다");
+      button.disabled=false;
+      button.textContent=original;
+    }
+  });
+  if(playButtons.length&&window.DrawerVillagePlayBilling?.enabled?.()){
+    window.DrawerVillagePlayBilling.loadProducts().then(products=>{
+      for(const product of products||[]){
+        const price=document.querySelector(`[data-play-price="${CSS.escape(product.productId)}"]`);
+        if(price&&product.formattedPrice)price.textContent=product.formattedPrice;
+      }
+    }).catch(error=>console.warn("Google Play 상품 조회 실패",error));
+  }
+  $("[data-play-restore]")?.addEventListener("click",async event=>{
+    const button=event.currentTarget;
+    button.disabled=true;
+    try{
+      const result=await window.DrawerVillagePlayBilling?.restorePurchases?.();
+      showToast(`${result?.restored||0}개의 Google Play 구매를 검증하고 복원했습니다`);
+    }catch(error){showToast(error?.message||"구매 내역을 확인하지 못했습니다")}
+    finally{button.disabled=false}
+  });
   $$("[data-cart-add]").forEach(el=>el.onclick=()=>{const cart=readCart(),id=el.dataset.cartAdd;cart[id]=id==="storage_50mb"?1:(Number(cart[id])||0)+1;writeCart(cart);showToast(id==="green_tea"?`녹차 ${cart[id]}잔을 장바구니에 담았어요`:"장바구니에 담았어요")});
   $$("[data-cart-plus]").forEach(el=>el.onclick=()=>{const cart=readCart(),id=el.dataset.cartPlus;cart[id]=id==="storage_50mb"?1:(Number(cart[id])||0)+1;writeCart(cart)});
   $$("[data-cart-minus]").forEach(el=>el.onclick=()=>{const cart=readCart(),id=el.dataset.cartMinus,next=(Number(cart[id])||0)-1;if(next>0)cart[id]=next;else delete cart[id];writeCart(cart)});
@@ -1409,9 +1446,8 @@ function bind(){
     el.closest("[data-official-relation-dialog]")?.close();
     openRelationDialog(el.dataset.editRel);
   });
-  $$("[data-view-source]").forEach(button=>button.onclick=()=>{
-    if(button.closest(".relationship-character-rail")?.dataset.rouletteScrolling==="1")return;
-    state.characterViewSource=button.dataset.viewSource;
+  $$("[data-view-source]").forEach(control=>control.onchange=()=>{
+    state.characterViewSource=control.value;
     setActive(state.characterViewSource);
     if(state.characterViewTarget===state.characterViewSource||!state.characters[state.characterViewTarget]){
       state.characterViewTarget=state.order.find(id=>id!==state.characterViewSource)||"";
@@ -1419,10 +1455,9 @@ function bind(){
     save(true);
     render();
   });
-  $$("[data-view-target]").forEach(button=>button.onclick=()=>{
-    if(button.closest(".relationship-character-rail")?.dataset.rouletteScrolling==="1")return;
-    if(button.dataset.viewTarget===state.characterViewSource)return;
-    state.characterViewTarget=button.dataset.viewTarget;
+  $$("[data-view-target]").forEach(control=>control.onchange=()=>{
+    if(control.value===state.characterViewSource)return;
+    state.characterViewTarget=control.value;
     save(true);
     render();
   });
@@ -2247,13 +2282,13 @@ mobileSiteQuery?.addEventListener?.("change",()=>render());
 render();
 if(!maintenanceEnabled())showInstallButton();
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260808c").catch(error=>{
+  import("./auth.js?v=20260808f").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260808c",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  navigator.serviceWorker.register("./sw.js?v=20260808f",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();
