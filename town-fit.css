@@ -1,0 +1,144 @@
+/* 2026-08-11s — 3000 × 3300 scrollable village canvas. */
+:root{
+  --town-canvas-width:3000px;
+  --town-canvas-height:3300px;
+  --town-building-width:272px;
+  --town-building-height:300px;
+}
+
+/* Both the observation map and the town editor use the same authored canvas.
+   The viewport scrolls; the map itself is never scaled down to fit. */
+:is(.town-map-scroll,.standard-observe-view .viewport){
+  display:block!important;
+  min-width:0!important;
+  overflow:auto!important;
+  overscroll-behavior:contain!important;
+  touch-action:pan-x pan-y!important;
+  scroll-behavior:smooth;
+  scrollbar-color:color-mix(in srgb,var(--p) 58%,#8d98a5) color-mix(in srgb,var(--panel) 82%,#d9dfe5);
+  scrollbar-width:thin!important;
+  background:color-mix(in srgb,#d9e9df 78%,var(--bg))!important;
+}
+:is(.town-map-scroll,.standard-observe-view .viewport)>.world{
+  position:relative!important;
+  display:block!important;
+  flex:none!important;
+  width:var(--town-canvas-width)!important;
+  min-width:var(--town-canvas-width)!important;
+  max-width:none!important;
+  height:var(--town-canvas-height)!important;
+  min-height:var(--town-canvas-height)!important;
+  max-height:none!important;
+  aspect-ratio:auto!important;
+  overflow:hidden!important;
+  transform:none!important;
+  touch-action:pan-x pan-y!important;
+}
+:is(.town-map-scroll,.standard-observe-view .viewport) .world-bg{
+  position:absolute!important;
+  inset:0!important;
+  width:var(--town-canvas-width)!important;
+  height:var(--town-canvas-height)!important;
+  object-fit:fill!important;
+  pointer-events:none!important;
+}
+
+/* 272px is exactly twice the original 136px building footprint. */
+:is(.town-map-scroll,.standard-observe-view .viewport) .place.has-art{
+  width:var(--town-building-width)!important;
+  height:var(--town-building-height)!important;
+  min-width:var(--town-building-width)!important;
+  min-height:var(--town-building-height)!important;
+  max-width:none!important;
+  transform:translate(-50%,-50%) scale(var(--place-scale,1))!important;
+  transform-origin:center bottom!important;
+  cursor:pointer;
+}
+:is(.town-map-scroll,.standard-observe-view .viewport) .building-preset-image{
+  filter:drop-shadow(0 18px 13px #17203355)!important;
+}
+:is(.town-map-scroll,.standard-observe-view .viewport) .map-place-label{
+  min-width:160px!important;
+  max-width:280px!important;
+  transform:translate(-50%,calc(-100% - 118px))!important;
+  font-size:27px!important;
+  line-height:1.12!important;
+}
+:is(.town-map-scroll,.standard-observe-view .viewport) .map-place-label small{font-size:18px!important}
+:is(.town-map-scroll,.standard-observe-view .viewport) .place-people{
+  transform:translate(-50%,-50%) scale(1.45)!important;
+  transform-origin:center bottom!important;
+}
+
+@media(min-width:721px){
+  html:not(.native-app) .standard-observe-view .viewport{
+    width:100%!important;
+    height:clamp(560px,72dvh,860px)!important;
+    min-height:0!important;
+    aspect-ratio:auto!important;
+    border-radius:24px!important;
+  }
+  html:not(.native-app) body main .standard-observe-view .viewport>.world,
+  html:not(.native-app) body main .town-map-scroll>.world{
+    width:var(--town-canvas-width)!important;
+    min-width:var(--town-canvas-width)!important;
+    max-width:none!important;
+    height:var(--town-canvas-height)!important;
+    min-height:var(--town-canvas-height)!important;
+    max-height:none!important;
+    aspect-ratio:auto!important;
+  }
+  html:not(.native-app) body main :is(.standard-observe-view .viewport,.town-map-scroll) .world-bg{
+    width:var(--town-canvas-width)!important;
+    height:var(--town-canvas-height)!important;
+    object-fit:fill!important;
+  }
+  html:not(.native-app)[data-active-tab="town"] .mobile-town-shell{min-height:calc(100dvh - 126px)}
+  html:not(.native-app)[data-active-tab="town"] .town-edit{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 360px!important;
+    height:calc(100dvh - 210px)!important;
+    min-height:560px!important;
+    overflow:hidden!important;
+  }
+  html:not(.native-app)[data-active-tab="town"] .town-map-scroll{
+    width:100%!important;
+    height:100%!important;
+    border-radius:24px!important;
+  }
+  html:not(.native-app)[data-active-tab="town"] .town-editor-panel{
+    height:100%!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+  }
+  html:not(.native-app)[data-active-tab="town"] .site-footer{display:none!important}
+}
+
+@media(max-width:720px){
+  html.native-app[data-active-tab="town"] .town-map-scroll{
+    position:absolute!important;
+    inset:0!important;
+    display:block!important;
+    width:100vw!important;
+    height:100dvh!important;
+    overflow:auto!important;
+    touch-action:pan-x pan-y!important;
+    border-radius:0!important;
+    scrollbar-width:none!important;
+  }
+  html.native-app[data-active-tab="town"] .town-map-scroll::-webkit-scrollbar{display:none!important}
+  html.native-app[data-active-tab="town"] .town-map-scroll>.world{
+    width:var(--town-canvas-width)!important;
+    min-width:var(--town-canvas-width)!important;
+    height:var(--town-canvas-height)!important;
+    min-height:var(--town-canvas-height)!important;
+    touch-action:pan-x pan-y!important;
+  }
+  html.native-app[data-active-tab="town"] .mobile-town-shell:not(.editing) .town-map-scroll .place{
+    touch-action:manipulation!important;
+  }
+  html.native-app[data-active-tab="town"] .mobile-town-shell.editing .town-map-scroll .place{
+    touch-action:none!important;
+  }
+}
