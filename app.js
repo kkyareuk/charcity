@@ -1,7 +1,6 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown} from "./state.js?v=20260809a";
-import {eventFor} from "./simulation.js?v=20260809a";
-import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel} from "./views.js?v=20260809a";
-import {recordCharacterInteraction} from "./state.js?v=20260809a";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown, recordCharacterInteraction} from "./state.js?v=20260811o";
+import {eventFor} from "./simulation.js?v=20260811o";
+import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel, translateDynamicInterface} from "./views.js?v=20260811o";
 
 let pendingImage=null;
 let deferredInstallPrompt=null;
@@ -9,8 +8,10 @@ let mobileCharacterEditorPane="";
 let mobileCharacterReorderOpen=false;
 let mobileCharacterDraftDirty=false;
 let homeCharacterPickerScroll=0;
+let observeRosterScroll=0;
 let mobileCharacterStripScroll=0;
 let mobileCharacterEditorScroll=0;
+let resetScrollAfterRender=false;
 const guidePending=new Set();
 const PAGE_GUIDES={
   observe:["관찰","가운데 캐릭터를 바꾸면 홈 화면은 그대로 유지한 채 그 캐릭터의 현재 장면으로 전환돼요. ‘지금 이 순간’을 누르면 잘리지 않은 전문과 오늘의 생활로그를 볼 수 있습니다."],
@@ -66,7 +67,7 @@ const overallViewPhrase=value=>({
   "없어서는 안 될 사람":"없어서는 안 될 사람으로 여김"
 }[value]||String(value||"어떤 사람인지 판단하지 않음"));
 const purchases=()=>window.ParallelCityAuth?.getInfo?.().entitlements||{};
-const characterLimit=()=>7+(Math.max(0,Number(purchases().characterSlotPacks)||0)*5);
+const characterLimit=()=>5+(Math.max(0,Number(purchases().characterSlotPacks)||0)*5);
 const townLimit=()=>2+Math.max(0,Number(purchases().townSlotPacks)||0);
 const BASE_AUDIENCES=["혼자 조용히 있고 싶은 사람","연인·데이트","부부","가족","친구 모임","직장인","학생","대학생","어린이","청소년","중장년","고소득층","가성비 중시","디저트 러버","커피 애호가","차 애호가","매운 음식 마니아","채식 선호","한식파","일식파","면 요리 마니아","신상 맛집파","SF 덕후","로맨스 덕후","판타지 덕후","미스터리 덕후","공포 덕후","액션 덕후","코미디 덕후","애니메이션 팬","영화 팬","드라마 팬","관찰 예능 팬","게임 방송 팬","음악 팬","아이돌 팬","인디 음악 팬","클래식 애호가","게임 마니아","보드게임 팬","e스포츠 팬","패션 관심층","빈티지 애호가","향수 애호가","사진 애호가","미술 애호가","독서가","여행 애호가","반려동물 동반","운동 애호가","야외 활동파","집순이·집돌이","오타쿠","얼리어답터"];
 function audienceOptions(){
@@ -201,10 +202,11 @@ const PROFILE_TAG_OPTIONS={
   appearanceTags:APPEARANCE_TAGS,
   attractionTraits:[...new Set([...STRUCTURED_APPEARANCE_TAGS,...HAIR_STYLE_ATTRACTION_TAGS,...APPEARANCE_TAGS,"단정한 사람","자기 관리를 잘함","전문직","예술가 기질","제복이 어울림","지적인 분위기","말투가 다정함","목소리가 좋음","능력 있는 사람","성실한 사람","책임감이 강함","리더십이 있음","침착한 사람","유머 감각이 있음","자신감이 있음","수줍은 사람","상냥한 사람","강단 있는 사람","신비로운 사람","위험한 분위기","연상","연하","동갑",...WEALTH_OPTIONS])]
 };
+PROFILE_TAG_OPTIONS.dislikedAttractionTraits=PROFILE_TAG_OPTIONS.attractionTraits;
 function openProfileTagsDialog(field){
   const character=active(),options=PROFILE_TAG_OPTIONS[field];if(!character||!options)return;
   let selected=[...(character[field]||[])].filter(value=>field!=="appearanceTags"||options.includes(value));
-  const titles={attractedGenders:"성지향 설정",appearanceTags:"외모 태그 정하기",attractionTraits:"끌리는 특징 정하기"};
+  const titles={attractedGenders:"성지향 설정",appearanceTags:"외모 태그 정하기",attractionTraits:"끌리는 특징 정하기",dislikedAttractionTraits:"비선호하는 특징 정하기"};
   const dialog=document.createElement("dialog");dialog.className="profile-tags-dialog";
   dialog.innerHTML=`<form method="dialog"><div class="title"><div><h2>${titles[field]}</h2><small>여러 개를 선택할 수 있어요.${field==="attractedGenders"?" ‘없음’을 고르면 다른 선택은 해제돼요.":""}</small></div><button value="cancel">×</button></div><div class="profile-tag-grid">${options.map(value=>`<button type="button" data-profile-tag="${value}" class="${selected.includes(value)?"on":""}">${value}</button>`).join("")}</div><div class="crop-actions"><button value="cancel">취소</button><button class="primary" value="save">저장</button></div></form>`;
   dialog.querySelectorAll("[data-profile-tag]").forEach(button=>button.onclick=()=>{
@@ -260,41 +262,52 @@ const exportImage=src=>new Promise(resolve=>{
 });
 const readableInk=color=>{
   const hex=String(color||"#765036").replace("#",""),full=hex.length===3?hex.split("").map(x=>x+x).join(""):hex;
-  const rgb=[0,2,4].map(i=>parseInt(full.slice(i,i+2),16)||0),luminance=(.299*rgb[0]+.587*rgb[1]+.114*rgb[2]);
-  return luminance>175?"#241c18":"#ffffff";
+  const channels=[0,2,4].map(i=>(parseInt(full.slice(i,i+2),16)||0)/255).map(value=>value<=.03928?value/12.92:Math.pow((value+.055)/1.055,2.4));
+  const luminance=.2126*channels[0]+.7152*channels[1]+.0722*channels[2];
+  const darkLuminance=.012,whiteContrast=1.05/(luminance+.05),darkContrast=(luminance+.05)/(darkLuminance+.05);
+  return darkContrast>=whiteContrast?"#241c18":"#ffffff";
 };
+const mixThemeColors=(first,second)=>{
+  const rgb=value=>{
+    const hex=String(value||"").trim().replace("#",""),full=hex.length===3?hex.split("").map(x=>x+x).join(""):hex;
+    return /^[0-9a-f]{6}$/i.test(full)?[0,2,4].map(i=>parseInt(full.slice(i,i+2),16)):[32,36,42];
+  };
+  const a=rgb(first),b=rgb(second);
+  return `#${a.map((value,index)=>Math.round((value+b[index])/2).toString(16).padStart(2,"0")).join("")}`;
+};
+const globalThemeValue=(name,fallback)=>getComputedStyle(document.documentElement).getPropertyValue(name).trim()||fallback;
 async function exportProfilePng(character){
-  await document.fonts?.load?.('32px "Do Hyeon"');await document.fonts?.ready;
+  await document.fonts?.load?.('32px "Noto Sans KR"');await document.fonts?.ready;
   const sections=profileExportLines(character),canvas=document.createElement("canvas"),ctx=canvas.getContext("2d"),width=1400,pad=70,rowH=58;
   const rows=sections.reduce((sum,[,items])=>sum+items.length,0);
   canvas.width=width;canvas.height=Math.max(1750,430+sections.length*72+rows*rowH);
-  const primary=character.theme?.primary||"#765036",secondary=character.theme?.secondary||primary,ink=readableInk(primary);
+  const primary=globalThemeValue("--p","#765036"),secondary=globalThemeValue("--s",primary),ink=readableInk(primary);
   ctx.fillStyle="#fffdf9";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.strokeStyle="#24201d";ctx.lineWidth=3;ctx.strokeRect(pad,55,width-pad*2,canvas.height-110);
   ctx.fillStyle=primary;ctx.fillRect(pad,55,width-pad*2,110);
-  ctx.fillStyle=ink;ctx.textAlign="center";ctx.font='56px "Do Hyeon","Malgun Gothic",sans-serif';ctx.fillText("캐 릭 터  설 정 표",width/2,128);
+  ctx.fillStyle=ink;ctx.textAlign="center";ctx.font='700 56px "Noto Sans KR","Malgun Gothic",sans-serif';ctx.fillText("캐 릭 터  설 정 표",width/2,128);
   const portrait=await exportImage(character.photo),icon=await exportImage(character.icon);
   const imageX=pad+24,imageY=190,imageW=250,imageH=250;
   ctx.fillStyle="#f4f0ea";ctx.fillRect(imageX,imageY,imageW,imageH);ctx.strokeStyle="#24201d";ctx.lineWidth=2;ctx.strokeRect(imageX,imageY,imageW,imageH);
   const drawContain=(image,x,y,w,h)=>{if(!image)return false;const scale=Math.min(w/image.width,h/image.height),dw=image.width*scale,dh=image.height*scale;ctx.drawImage(image,x+(w-dw)/2,y+(h-dh)/2,dw,dh);return true};
-  if(!drawContain(portrait,imageX,imageY,imageW,imageH)){ctx.fillStyle=primary;ctx.font='72px "Do Hyeon","Malgun Gothic",sans-serif';ctx.fillText(character.name.slice(0,1),imageX+imageW/2,imageY+145)}
+  if(!drawContain(portrait,imageX,imageY,imageW,imageH)){ctx.fillStyle=primary;ctx.font='700 72px "Noto Sans KR","Malgun Gothic",sans-serif';ctx.fillText(character.name.slice(0,1),imageX+imageW/2,imageY+145)}
   if(icon)drawContain(icon,imageX+178,imageY+178,66,66);
-  ctx.textAlign="left";ctx.fillStyle="#24201d";ctx.font='48px "Do Hyeon","Malgun Gothic",sans-serif';ctx.fillText(character.name,pad+310,260);
-  ctx.font='24px "Do Hyeon","Malgun Gothic",sans-serif';ctx.fillStyle="#665d56";ctx.fillText("서랍마을 인물 기록 · 설정된 항목만 표기",pad+310,310);
+  ctx.textAlign="left";ctx.fillStyle="#24201d";ctx.font='700 48px "Noto Sans KR","Malgun Gothic",sans-serif';ctx.fillText(character.name,pad+310,260);
+  ctx.font='500 24px "Noto Sans KR","Malgun Gothic",sans-serif';ctx.fillStyle="#665d56";ctx.fillText("서랍마을 인물 기록 · 설정된 항목만 표기",pad+310,310);
   ctx.strokeStyle="#24201d";ctx.strokeRect(pad+290,190,width-pad*2-314,250);
   let y=480;
   sections.forEach(([title,items])=>{
-    ctx.fillStyle=primary;ctx.fillRect(pad,y,210,56);ctx.fillStyle=ink;ctx.font='29px "Do Hyeon","Malgun Gothic",sans-serif';ctx.fillText(title,pad+22,y+39);
+    ctx.fillStyle=primary;ctx.fillRect(pad,y,210,56);ctx.fillStyle=ink;ctx.font='700 29px "Noto Sans KR","Malgun Gothic",sans-serif';ctx.fillText(title,pad+22,y+39);
     ctx.strokeStyle="#24201d";ctx.lineWidth=2;ctx.strokeRect(pad,y,width-pad*2,56);y+=56;
     items.forEach(([label,value])=>{
       ctx.strokeRect(pad,y,width-pad*2,rowH);ctx.beginPath();ctx.moveTo(pad+270,y);ctx.lineTo(pad+270,y+rowH);ctx.stroke();
       ctx.fillStyle="#f0ece6";ctx.fillRect(pad+1,y+1,269,rowH-2);
-      ctx.fillStyle="#302925";ctx.font='23px "Do Hyeon","Malgun Gothic",sans-serif';ctx.fillText(label,pad+18,y+38);
+      ctx.fillStyle="#302925";ctx.font='600 23px "Noto Sans KR","Malgun Gothic",sans-serif';ctx.fillText(label,pad+18,y+38);
       ctx.font='22px "Malgun Gothic",sans-serif';ctx.fillText(String(value).slice(0,72),pad+292,y+38);y+=rowH;
     });
     y+=22;
   });
-  ctx.fillStyle=primary;ctx.font='22px "Do Hyeon","Malgun Gothic",sans-serif';ctx.fillText(`서랍마을 · ${new Date().toLocaleDateString("ko-KR")}`,pad+15,canvas.height-75);
+  ctx.fillStyle=primary;ctx.font='600 22px "Noto Sans KR","Malgun Gothic",sans-serif';ctx.fillText(`서랍마을 · ${new Date().toLocaleDateString("ko-KR")}`,pad+15,canvas.height-75);
   try{const link=document.createElement("a");link.download=`${character.name}-설정표.png`;link.href=canvas.toDataURL("image/png");link.click()}catch{showToast("외부 이미지 보안 제한으로 PNG를 만들 수 없어요. PDF 내보내기를 이용해 주세요.")}
 }
 async function exportProfilePngV2(character,download=true){
@@ -371,8 +384,8 @@ async function exportProfilePngV2(character,download=true){
 }
 function exportProfilePdf(character){
   const sections=profileExportLines(character),win=window.open("","_blank");if(!win){showToast("팝업을 허용한 뒤 다시 시도해 주세요");return}
-  const primary=character.theme?.primary||"#765036",secondary=character.theme?.secondary||primary,ink=readableInk(primary),photo=character.photo||character.icon;
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${character.name} 설정표</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap" rel="stylesheet"><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#211d1a;background:#eee;font-family:"Malgun Gothic",sans-serif}.sheet{width:190mm;min-height:270mm;margin:12px auto;padding:8mm;background:#fff;border:1px solid #222}.title{padding:10px;color:${ink};background:${primary};text-align:center;font:34px "Do Hyeon",sans-serif;letter-spacing:8px}.identity{display:grid;grid-template-columns:42mm 1fr;margin-top:7mm;border:1px solid #222}.portrait{width:42mm;height:42mm;object-fit:contain;border-right:1px solid #222;background:#f5f2ed}.identity div{padding:8mm}.identity h1{margin:0;font:32px "Do Hyeon",sans-serif}.identity p{color:#746b64}section{margin-top:6mm;break-inside:avoid}h2{margin:0;padding:7px 10px;color:${ink};background:${primary};font:22px "Do Hyeon",sans-serif}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #333;padding:7px 9px;vertical-align:top;font-size:13px;overflow-wrap:anywhere}th{width:34%;background:#f1ede7;text-align:left;font-family:"Do Hyeon",sans-serif;font-size:15px}button{width:100%;margin-top:8mm;padding:12px;border:0;color:#fff;background:${primary};font:18px "Do Hyeon",sans-serif}@media print{body{background:#fff}.sheet{width:auto;min-height:0;margin:0;padding:0;border:0}button{display:none}}</style></head><body><main class="sheet"><div class="title">캐 릭 터 설 정 표</div><div class="identity">${photo?`<img class="portrait" src="${photo}" alt="">`:`<div class="portrait"></div>`}<div><h1>${character.name}</h1><p>서랍마을 인물 기록 · 설정된 항목만 표기</p></div></div>${sections.map(([title,rows])=>`<section><h2>${title}</h2><table>${rows.map(([label,value])=>`<tr><th>${label}</th><td>${value}</td></tr>`).join("")}</table></section>`).join("")}<button onclick="print()">PDF로 저장 / 인쇄</button></main></body></html>`);
+  const primary=globalThemeValue("--p","#765036"),secondary=globalThemeValue("--s",primary),ink=readableInk(primary),photo=character.photo||character.icon;
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${character.name} 설정표</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet"><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#211d1a;background:#eee;font-family:"Noto Sans KR","Malgun Gothic",sans-serif}.sheet{width:190mm;min-height:270mm;margin:12px auto;padding:8mm;background:#fff;border:1px solid #222}.title{padding:10px;color:${ink};background:${primary};text-align:center;font-size:34px;font-weight:900;letter-spacing:8px}.identity{display:grid;grid-template-columns:42mm 1fr;margin-top:7mm;border:1px solid #222}.portrait{width:42mm;height:42mm;object-fit:contain;border-right:1px solid #222;background:#f5f2ed}.identity div{padding:8mm}.identity h1{margin:0;font-size:32px;font-weight:900}.identity p{color:#746b64}section{margin-top:6mm;break-inside:avoid}h2{margin:0;padding:7px 10px;color:${ink};background:${primary};font-size:22px;font-weight:900}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #333;padding:7px 9px;vertical-align:top;font-size:13px;overflow-wrap:anywhere}th{width:34%;background:#f1ede7;text-align:left;font-size:15px;font-weight:900}button{width:100%;margin-top:8mm;padding:12px;border:0;color:#fff;background:${primary};font:700 18px "Noto Sans KR","Malgun Gothic",sans-serif}@media print{body{background:#fff}.sheet{width:auto;min-height:0;margin:0;padding:0;border:0}button{display:none}}</style></head><body><main class="sheet"><div class="title">캐 릭 터 설 정 표</div><div class="identity">${photo?`<img class="portrait" src="${photo}" alt="">`:`<div class="portrait"></div>`}<div><h1>${character.name}</h1><p>서랍마을 인물 기록 · 설정된 항목만 표기</p></div></div>${sections.map(([title,rows])=>`<section><h2>${title}</h2><table>${rows.map(([label,value])=>`<tr><th>${label}</th><td>${value}</td></tr>`).join("")}</table></section>`).join("")}<button onclick="print()">PDF로 저장 / 인쇄</button></main></body></html>`);
   win.document.close();setTimeout(()=>win.print(),900);
 }
 async function exportProfilePdfV2(character,bodyFont){
@@ -391,25 +404,23 @@ function openProfileExportDialog(){
   dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();
 }
 function enhanceDynamicForms(){
-  const feedbackIntro=document.querySelector(".feedback-card>p");
-  if(feedbackIntro)feedbackIntro.textContent="Google 로그인 후 Firestore 피드백함에 먼저 저장하고 이메일 전달을 추가로 시도해요. 성공·실패 결과는 버튼 아래에 표시되며 게임 데이터 동기화는 실행하지 않습니다.";
-  const profile=document.querySelector(".profile-license");
-  if(profile){
+  document.querySelectorAll(".profile-license").forEach(profile=>{
     profile.querySelectorAll('[data-personality-field="interference"]').forEach(button=>{
       if(button.dataset.value==="컨트롤프릭"){button.dataset.value="통제광";button.textContent="통제광"}
     });
     const fields=profile.querySelector(".fields");
     if(fields&&!profile.querySelector('[data-field="wakeHabit"]')){
-      const label=document.createElement("label");label.className="wake-habit-field";label.innerHTML=`기상 습관<select data-field="wakeHabit">${["알람을 듣고 천천히 일어남","알람이 울리기 전에 눈을 뜸","알람을 여러 번 미룸","눈을 뜨자마자 바로 일어남","이불 속에서 한참 뒹굶","일어나자마자 창문을 엶","일어나자마자 물을 마심","침대에서 오늘 일정을 확인함","비몽사몽한 채 방을 돌아다님","누가 깨워 줘야 일어남"].map(value=>`<option ${active().wakeHabit===value?"selected":""}>${value}</option>`).join("")}</select><small>기상 직후 장면과 아침 행동에 반영돼요.</small>`;fields.append(label);
+      const label=document.createElement("label");label.className="wake-habit-field";label.innerHTML=`기상 습관<select data-field="wakeHabit">${["알람을 듣고 천천히 일어남","알람이 울리기 전에 눈을 뜸","알람을 여러 번 미룸","눈을 뜨자마자 바로 일어남","이불 속에서 한참 뒹굶","일어나자마자 창문을 엶","일어나자마자 물을 마심","침대에서 오늘 일정을 확인함","비몽사몽한 채 방을 돌아다님","누가 깨워 줘야 일어남"].map(value=>`<option value="${htmlEsc(value)}" ${active().wakeHabit===value?"selected":""}>${value}</option>`).join("")}</select><small>기상 직후 장면과 아침 행동에 반영돼요.</small>`;fields.append(label);
     }
     if(fields&&!profile.querySelector('[data-field="sleepHabit"]')){
-      const label=document.createElement("label");label.className="sleep-habit-field";label.innerHTML=`수면 습관<select data-field="sleepHabit">${["이불을 단정히 덮고 잠","이불을 걷어차며 잠","옆으로 웅크려 잠","팔다리를 뻗고 잠","베개를 끌어안고 잠","잠꼬대를 자주 함","뒤척임이 많음","아주 얌전히 잠","새벽에 자주 깸","코를 골며 깊이 잠"].map(value=>`<option ${active().sleepHabit===value?"selected":""}>${value}</option>`).join("")}</select><small>자는 중 현재 장면에 반영돼요. 수면 중인 내용은 생활 로그에 기록하지 않아요.</small>`;fields.append(label);
+      const label=document.createElement("label");label.className="sleep-habit-field";label.innerHTML=`수면 습관<select data-field="sleepHabit">${["이불을 단정히 덮고 잠","이불을 걷어차며 잠","옆으로 웅크려 잠","팔다리를 뻗고 잠","베개를 끌어안고 잠","잠꼬대를 자주 함","뒤척임이 많음","아주 얌전히 잠","새벽에 자주 깸","코를 골며 깊이 잠"].map(value=>`<option value="${htmlEsc(value)}" ${active().sleepHabit===value?"selected":""}>${value}</option>`).join("")}</select><small>자는 중 현재 장면에 반영돼요. 수면 중인 내용은 생활 로그에 기록하지 않아요.</small>`;fields.append(label);
     }
     if(fields&&!profile.querySelector('[data-field="gender"]')){
       const block=document.createElement("div");block.className="profile-extra-settings";
-      const select=(field,title,values,current,help="")=>`<label>${title}<select data-field="${field}">${values.map(value=>`<option ${value===current?"selected":""}>${value}</option>`).join("")}</select>${help?`<small>${help}</small>`:""}</label>`;
+      const select=(field,title,values,current,help="")=>`<label>${title}<select data-field="${field}">${values.map(value=>`<option value="${htmlEsc(value)}" ${value===current?"selected":""}>${value}</option>`).join("")}</select>${help?`<small>${help}</small>`:""}</label>`;
       block.innerHTML=
         select("gender","성별",["설정하지 않음","남성","여성","그외"],active().gender||"설정하지 않음")+
+        select("speechStyle","캐릭터 말투",["자동 · 성격에 맞춤","반말","존댓말 · 해요체","격식 있는 존댓말 · 하십시오체","극존칭","무뚝뚝한 단답","다정하고 부드러운 말투","고풍스러운 말투"],active().speechStyle||"자동 · 성격에 맞춤","캐릭터가 직접 말하거나 마을 주인의 부탁을 받아들일지 판단할 때 사용하는 말투예요.")+
         select("attractionTarget","끌리는 대상",["설정하지 않음 · 누구에게도 끌리지 않음","여성에게 끌림","남성에게 끌림","여성과 남성에게 끌림","성별과 무관하게 끌림","그외 성별에게 끌림"],active().attractionTarget||"설정하지 않음 · 누구에게도 끌리지 않음")+
         select("relationshipOpenness","새로운 사람에게 끌리는 정도",["설정하지 않음 · 절대 끌리지 않음","연인이 없을 때만 취향이면 끌림","연인이 있어도 취향이면 끌릴 수 있음"],active().relationshipOpenness||"설정하지 않음 · 절대 끌리지 않음","사용자가 직접 설정하지 않으면 새로운 사람에게 절대 끌리지 않아요.")+
         select("wealth","재산",WEALTH_OPTIONS,active().wealth||"평범한 형편","캐릭터가 실제로 가진 경제적 여유예요. 소비 유형과는 별도로 계산돼요.")+
@@ -425,8 +436,8 @@ function enhanceDynamicForms(){
       const sleep=labelOf('[data-field="sleep"]'),sleepHabit=labelOf('[data-field="sleepHabit"]');
       if(wake&&wakeHabit)wake.after(wakeHabit);
       if(sleep&&sleepHabit)sleep.after(sleepHabit);
-      const job=labelOf('[data-field="job"]'),jobTitle=labelOf('[data-field="jobTitle"]'),workplace=labelOf('[data-field="workplaceId"]'),income=labelOf('[data-field="income"]'),gender=labelOf('[data-field="gender"]'),orientation=labelOf('[data-field="attractionTarget"]'),wealth=labelOf('[data-field="wealth"]');
-      if(job&&gender&&orientation)job.before(gender,orientation);
+      const job=labelOf('[data-field="job"]'),jobTitle=labelOf('[data-field="jobTitle"]'),workplace=labelOf('[data-field="workplaceId"]'),income=labelOf('[data-field="income"]'),gender=labelOf('[data-field="gender"]'),speech=labelOf('[data-field="speechStyle"]'),orientation=labelOf('[data-field="attractionTarget"]'),wealth=labelOf('[data-field="wealth"]');
+      if(job&&gender&&orientation)job.before(gender,...(speech?[speech]:[]),orientation);
       if(job&&jobTitle)job.after(jobTitle);
       if(income&&wealth)income.before(wealth);
       if(workplace&&!profile.querySelector('[data-field="birthday"]')){
@@ -434,15 +445,15 @@ function enhanceDynamicForms(){
         birthday.innerHTML=`생일 · 월일<input type="text" inputmode="numeric" maxlength="4" pattern="(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])" data-field="birthday" value="${active().birthday||""}" placeholder="예: 0804"><small>연도 없이 네 자리로 입력해요. 생일파티는 당일 오후 7시에 생성돼요.</small>`;
         workplace.after(birthday);
       }
-      const license=profile.querySelector('[data-field="driverLicense"]')?.closest("label");
+      const license=profile.querySelector('input[data-character-check][data-field="driverLicense"]')?.closest("label");
       if(license)fields.append(license);
       const exportButton=profile.querySelector("[data-export-profile]");
       if(exportButton)profile.append(exportButton);
     }
-  }
+  });
   document.querySelectorAll("[data-profile-tags-summary]").forEach(summary=>{
     const values=active()[summary.dataset.profileTagsSummary]||[];
-    summary.textContent=values.length?values.join(" · "):"정하지 않음";
+    summary.textContent=values.length?values.join(" · "):({en:"Not set",ja:"未設定"}[state.uiLanguage]||"정하지 않음");
   });
   document.querySelectorAll('.catalog-dex-card [data-kind="fashion"][data-catalog-field="image"]').forEach(input=>{
     const detail=input.closest(".catalog-detail");if(!detail||detail.querySelector('[data-catalog-field="material"]'))return;
@@ -459,8 +470,12 @@ function enhanceDynamicForms(){
   const sync=document.querySelector(".sync-panel");
   if(sync&&!sync.querySelector(".storage-meter")){
     const usage=window.ParallelCityAuth?.getInfo?.().storageUsage||JSON.parse(localStorage.getItem("drawer-village-storage-usage")||'{"count":0,"bytes":0,"maxCount":120,"maxBytes":20971520}');
-    const percent=Math.min(100,Math.round((usage.bytes||0)/(usage.maxBytes||20971520)*100)),used=((usage.bytes||0)/1048576).toFixed(1),limit=((usage.maxBytes||20971520)/1048576).toFixed(0),left=`${Math.max(0,((usage.maxBytes||20971520)-(usage.bytes||0))/1048576).toFixed(1)}MB 남음`;
-    const meter=document.createElement("div");meter.className="storage-meter";meter.innerHTML=`<h3>사진 저장 공간</h3><div><i style="width:${percent}%"></i></div><b>${used}MB 사용 · ${left}</b><small>현재 총 ${limit}MB · 캐릭터 ${characterLimit()}명 · 마을 ${townLimit()}개 · 이미지 링크는 이 용량을 사용하지 않아요.</small>`;sync.append(meter);
+    const percent=Math.min(100,Math.round((usage.bytes||0)/(usage.maxBytes||20971520)*100)),used=((usage.bytes||0)/1048576).toFixed(1),limit=((usage.maxBytes||20971520)/1048576).toFixed(0),remaining=Math.max(0,((usage.maxBytes||20971520)-(usage.bytes||0))/1048576).toFixed(1),left=`${remaining}MB 남음`;
+    const storageCopy={
+      en:{title:"Image storage",usage:`${used}MB used · ${remaining}MB remaining`,summary:`${limit}MB total · ${characterLimit()} characters · ${townLimit()} towns · Linked images do not use this storage.`},
+      ja:{title:"画像ストレージ",usage:`${used}MB使用・残り${remaining}MB`,summary:`合計${limit}MB・キャラクター${characterLimit()}人・村${townLimit()}個・画像リンクはこの容量を使用しません。`}
+    }[state.uiLanguage]||{title:"사진 저장 공간",usage:`${used}MB 사용 · ${left}`,summary:`현재 총 ${limit}MB · 캐릭터 ${characterLimit()}명 · 마을 ${townLimit()}개 · 이미지 링크는 이 용량을 사용하지 않아요.`};
+    const meter=document.createElement("div");meter.className="storage-meter";meter.innerHTML=`<h3>${storageCopy.title}</h3><div><i style="width:${percent}%"></i></div><b>${storageCopy.usage}</b><small>${storageCopy.summary}</small>`;sync.append(meter);
   }
 }
 const addRoutine=characterId=>{
@@ -635,20 +650,72 @@ function renderMaintenance(){
   document.querySelector("#maintenance-reload")?.addEventListener("click",()=>location.reload());
 }
 
+function replaceFeedbackFormWithEmailLink(){
+  const card=document.querySelector(".feedback-card");
+  if(!card)return;
+  const copy={
+    ko:{title:"개발자에게 피드백 보내기",description:"보내려는 내용의 유형을 고르면 기기의 메일 앱이 열려요. 아래 진단 정보가 함께 들어가 문제를 확인하는 데 도움을 줍니다.",recipient:"받는 주소",diagnostics:"자동 첨부 진단 정보",prompt:"아래에 자세한 내용을 적어 주세요.",types:[["오류 신고","오류","어떤 동작을 했을 때 무엇이 잘못되었는지, 다시 발생하는 순서를 적어 주세요."],["기능 제안","제안","원하는 기능과 사용 상황을 적어 주세요."],["생활 장면·관계","장면/관계","어떤 캐릭터 설정에서 어떤 장면이 어색했는지 적어 주세요. 캐릭터 이름은 필요한 경우에만 직접 적어 주세요."],["번역·문구","번역","언어와 어색하거나 잘못된 문구를 적어 주세요."],["결제·계정·동기화","결제/동기화","표시된 오류 문구와 시도한 순서를 적어 주세요. 비밀번호나 API 비밀키는 적지 마세요."],["디자인·사용성","UI","보기 어렵거나 누르기 불편한 위치와 원하는 모습을 적어 주세요."]]},
+    en:{title:"Send feedback to the developer",description:"Choose a category to open your email app. Helpful device diagnostics are included automatically.",recipient:"Recipient",diagnostics:"Automatically included diagnostics",prompt:"Please describe the details below.",types:[["Report a bug","Bug","Describe what you did, what went wrong, and how to reproduce it."],["Suggest a feature","Feature","Describe the feature and when you would use it."],["Life scenes & relationships","Scene/Relationship","Describe which settings produced an awkward scene. Add character names only if needed."],["Translation & wording","Translation","Tell us the language and the incorrect or awkward text."],["Payments, account & sync","Payment/Sync","Include the error message and steps you tried. Never include passwords or secret API keys."],["Design & usability","UI","Describe what was hard to read or use and what you expected instead."]]},
+    ja:{title:"開発者へフィードバック",description:"種類を選ぶとメールアプリが開きます。確認に役立つ端末情報も自動で入ります。",recipient:"宛先",diagnostics:"自動添付される診断情報",prompt:"詳しい内容を下に入力してください。",types:[["不具合を報告","不具合","行った操作、問題、再現手順を記入してください。"],["機能を提案","機能提案","ほしい機能と利用場面を記入してください。"],["生活シーン・関係","シーン/関係","どの設定で不自然なシーンが出たか記入してください。必要な場合のみ名前を追加してください。"],["翻訳・文言","翻訳","言語と不自然または誤った文言を記入してください。"],["決済・アカウント・同期","決済/同期","エラー文と試した手順を記入してください。パスワードや秘密鍵は書かないでください。"],["デザイン・操作性","UI","読みにくい、操作しにくい場所と期待した表示を記入してください。"]]}
+  }[state.uiLanguage]||null;
+  const text=copy||{title:"개발자에게 피드백 보내기",description:"유형을 고르면 기기의 메일 앱이 열려요.",recipient:"받는 주소",diagnostics:"자동 첨부 진단 정보",prompt:"아래에 자세한 내용을 적어 주세요.",types:[["오류 신고","오류","문제와 재현 순서를 적어 주세요."]]};
+const build=String(window.DRAWER_VILLAGE_NATIVE_BUILD||"20260811o");
+  const deviceModel=navigator.userAgentData?.model||String(navigator.userAgent||"").match(/Android[^;]*;\s*([^;)]+?)\s+Build\//)?.[1]||"not exposed by this browser";
+  const diagnostics=[
+    `Build: ${build} (${window.DRAWER_VILLAGE_NATIVE?"Android app":"Web"})`,
+    `Device/model: ${deviceModel}`,
+    `User agent: ${navigator.userAgent||"unknown"}`,
+    `Platform: ${navigator.userAgentData?.platform||navigator.platform||"unknown"}`,
+    `Screen: ${screen.width}x${screen.height} / viewport ${window.innerWidth}x${window.innerHeight} / DPR ${window.devicePixelRatio||1}`,
+    `Language: ${navigator.language||"unknown"} / UI ${state.uiLanguage||"ko"}`,
+    `Time zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone||"unknown"}`,
+    `Online: ${navigator.onLine?"yes":"no"}`,
+    `Theme: ${state.colorMode||"light"} / ${state.visualTheme||"monochrome"}`,
+    `Data counts: characters ${state.order?.length||0}, towns ${state.towns?.length||0}`
+  ].join("\n");
+  const links=text.types.map(([label,prefix,hint])=>{
+    const subject=encodeURIComponent(`[${state.uiLanguage==="ja"?"ひきだし村":state.uiLanguage==="en"?"Drawer Village":"서랍마을"}][${prefix}]`);
+    const body=encodeURIComponent(`${text.prompt}\n${hint}\n\n--- ${text.diagnostics} ---\n${diagnostics}`);
+    return `<a class="primary feedback-email-button feedback-email-type" href="mailto:kkyaareuk@gmail.com?subject=${subject}&body=${body}">${label}</a>`;
+  }).join("");
+  card.innerHTML=`<h2>${text.title}</h2><p>${text.description}</p><div class="feedback-email-types">${links}</div><small>${text.recipient} · kkyaareuk@gmail.com</small>`;
+}
+
+function restoreWindowScroll(x,y){
+  const restore=()=>window.scrollTo({left:x,top:y,behavior:"auto"});
+  requestAnimationFrame(()=>{restore();requestAnimationFrame(restore)});
+  setTimeout(restore,40);
+}
 function render(){
+  const preservePageScroll=document.documentElement.dataset.drawerRendered==="1"&&!resetScrollAfterRender;
+  const previousPageX=window.scrollX,previousPageY=window.scrollY;
+  const openCharacterEditor=document.querySelector("[data-mobile-character-editor-dialog][open] .mobile-character-editor-shell");
+  if(openCharacterEditor)mobileCharacterEditorScroll=openCharacterEditor.scrollTop;
+  resetScrollAfterRender=false;
   try{
     const mobileSite=window.matchMedia?.("(max-width:720px)")?.matches??window.innerWidth<=720;
     document.documentElement.classList.toggle("native-app",Boolean(window.DRAWER_VILLAGE_NATIVE)||mobileSite);
+    document.documentElement.lang=({en:"en",ja:"ja"}[state.uiLanguage]||"ko");
+    document.title=({en:"Drawer Village",ja:"ひきだし村"}[state.uiLanguage]||"서랍마을");
     document.documentElement.dataset.uiFont=state.uiFont||"system";
     document.documentElement.dataset.uiScale=state.uiScale||"normal";
     if(maintenanceEnabled()){renderMaintenance();return}
     document.body.classList.remove("maintenance-mode");
     renderApp(state);
+    replaceFeedbackFormWithEmailLink();
+    // A data-action button without an explicit type must never submit an
+    // enclosing form. Accidental form submissions were jumping mobile pages
+    // back to the top before the actual click handler finished.
+    document.querySelectorAll("button:not([type])").forEach(button=>{
+      if(button.closest('form[method="dialog"]')&&button.hasAttribute("value"))return;
+      button.type="button";
+    });
     const grid=document.querySelector(".shop-product-grid");
     if(grid&&!grid.querySelector('[data-product-id="green_tea"]')){
       const card=document.createElement("article");
       card.className="premium-product one-time-product";
-      card.innerHTML=`<div class="premium-product-heading"><span>응원</span><div><small>개발 응원</small><h2>개발자에게 녹차 사주기 🍵</h2></div><b>1,500원</b></div><p>잘 먹겠습니다 🥹</p><button class="primary premium-buy" data-cart-add="green_tea">장바구니에 담기</button>`;
+      const teaCopy={en:{tag:"Support",small:"Support development",title:"Buy the developer green tea 🍵",thanks:"Thank you 🥹",cart:"Add to cart"},ja:{tag:"応援",small:"開発を応援",title:"開発者に緑茶をおごる 🍵",thanks:"ありがとうございます 🥹",cart:"カートに追加"}}[state.uiLanguage]||{tag:"응원",small:"개발 응원",title:"개발자에게 녹차 사주기 🍵",thanks:"잘 먹겠습니다 🥹",cart:"장바구니에 담기"};
+      card.innerHTML=`<div class="premium-product-heading"><span>${teaCopy.tag}</span><div><small>${teaCopy.small}</small><h2>${teaCopy.title}</h2></div><b>1,500원</b></div><p>${teaCopy.thanks}</p><button class="primary premium-buy" data-cart-add="green_tea">${teaCopy.cart}</button>`;
       grid.insertBefore(card,grid.lastElementChild);
     }
     bind();
@@ -659,6 +726,8 @@ function render(){
     requestAnimationFrame(showSetupCoach);
     requestAnimationFrame(()=>document.querySelectorAll(".life-log ol").forEach(log=>{log.scrollTop=log.scrollHeight}));
     requestAnimationFrame(maybeShowPageGuide);
+    document.documentElement.dataset.drawerRendered="1";
+    if(preservePageScroll)restoreWindowScroll(previousPageX,previousPageY);
   }catch(error){
     console.error("화면 복구 필요",error);
     document.querySelector("#app").innerHTML=`<section class="panel empty"><h1>화면을 복구하는 중 문제가 생겼어요</h1><p>저장 데이터는 지우지 않았습니다. 아래 버튼으로 다시 불러와 주세요.</p><button class="primary" id="safe-reload">다시 불러오기</button></section>`;
@@ -681,8 +750,14 @@ function renderPreservingCharacterEditorScroll(element){
   requestAnimationFrame(()=>{
     const nextShell=document.querySelector("[data-mobile-character-editor-dialog] .mobile-character-editor-shell");
     if(nextShell)nextShell.scrollTop=mobileCharacterEditorScroll;
-    window.scrollTo(pageX,pageY);
+    restoreWindowScroll(pageX,pageY);
   });
+}
+function renderPreservingPageScroll(element){
+  const pageX=window.scrollX,pageY=window.scrollY;
+  element?.blur?.();
+  render();
+  restoreWindowScroll(pageX,pageY);
 }
 function flushMobileCharacterDraft({closeEditor=true}={}){
   if(mobileCharacterDraftDirty)save(true);
@@ -793,13 +868,48 @@ function openCarEditor(homeId,carId){
 }
 
 function applyTheme(){
-  const c=active();
-  const primary=c?.theme?.primary||"#176b60";
-  const secondary=c?.theme?.gradient?(c.theme.secondary||primary):primary;
-  document.documentElement.dataset.colorMode=state.colorMode==="light"?"light":"dark";
+  const mode=state.colorMode==="light"?"light":"dark";
+  const palettes={
+    monochrome:{light:["#20242a","#6d747d","#e8eaed","#ffffff","#1d2126","#626a73","#cbd0d5"],dark:["#7f8791","#c0c6ce","#090c10","#151a20","#f4f6f8","#b5bbc3","#343b44"]},
+    cream:{light:["#b06a00","#f2a93b","#fff4d8","#fffdf8","#3a2508","#80613a","#f2d39b"],dark:["#f0a83a","#ffd073","#190f02","#30200b","#fff8e9","#e2c18d","#684617"]},
+    peach:{light:["#ef536f","#ff986e","#fff0e9","#fffaf8","#481923","#955d5d","#ffc6ba"],dark:["#ff7185","#ffad82","#1d080d","#381318","#fff2ef","#efb6ae","#7b3340"]},
+    mint:{light:["#00a982","#4bd8aa","#e9fff6","#fbfffd","#073e32","#4f8878","#b4efd9"],dark:["#21cea3","#6af0c0","#031913","#073128","#effff9","#9ce3cd","#1e7560"]},
+    sunshine:{light:["#d98b00","#ffd23f","#fff8d2","#fffef7","#3e2b00","#836b27","#f4dc82"],dark:["#ffb51f","#ffe05f","#1c1300","#352703","#fffbe8","#e9d184","#735513"]},
+    sage:{light:["#2f855a","#76c36a","#ecf8ed","#fbfffc","#143823","#5a7f66","#bfe1c4"],dark:["#55bc79","#99db76","#06150c","#0f2b19","#effcf3","#a8d4b4","#28643e"]},
+    rose:{light:["#b57873","#cfb4ab","#eee7e0","#fff8f4","#413330","#756a66","#c0af99"],dark:["#d49a95","#cfb4ab","#1d1818","#302525","#fff4ee","#d1bdb4","#725d58"]},
+    ocean:{light:["#007fc2","#36c0e8","#e9f9ff","#fbfeff","#073952","#4f7f93","#b6e8f7"],dark:["#29a9e8","#5cdaf0","#031720","#082f41","#effbff","#9ed7e6","#1e607b"]},
+    lavender:{light:["#7547e8","#c26de8","#f5edff","#fffaff","#2e1652","#76588d","#ddc2fa"],dark:["#956cff","#db86f4","#10051d","#27103b","#faf2ff","#d1afe4","#593180"]},
+    berry:{light:["#be2cff","#ff45b5","#f9ecff","#ffffff","#321044","#7d4a8c","#e5b6f8"],dark:["#d65cff","#ff69c5","#16051d","#2c0c38","#fff2ff","#d9a8e8","#663077"]},
+    sky:{light:["#078cff","#55c8ff","#eaf7ff","#ffffff","#082f50","#4b7895","#b5e2ff"],dark:["#31a8ff","#68ddff","#031522","#092c43","#eefaff","#9ed5ee","#245b79"]},
+    cobalt:{light:["#112250","#3c507d","#f3f0e9","#fffaf4","#112250","#65708a","#d9cbc2"],dark:["#e0c58f","#3c507d","#071124","#101e3b","#f3f0e9","#bac3d7","#3c507d"]},
+    aqua:{light:["#00a9b5","#21dfc5","#e7fffb","#ffffff","#073d3d","#4e8580","#aff1e7"],dark:["#13cbd1","#40f0cd","#031817","#092f2d","#edfffb","#9ce0d6","#1d7069"]},
+    lime:{light:["#52a900","#b4d900","#f3ffe3","#ffffff","#203600","#687f3c","#d3efa8"],dark:["#76ce22","#c9ef43","#0b1602","#1b3309","#f7ffe9","#c0dd99","#466f21"]},
+    coral:{light:["#ff4f62","#ff9770","#fff0ec","#ffffff","#49151b","#955b58","#ffc6ba"],dark:["#ff6674","#ffad82","#1d080b","#381316","#fff3f0","#efb6ae","#7d3439"]},
+    baroque:{light:["#ad6d15","#efbb55","#fbf5d2","#fff9e8","#441004","#79380b","#e2bf6d"],dark:["#efbb55","#ad6d15","#180b03","#2a1306","#fff2cf","#d7ad71","#79380b"]},
+    "moonlit-drawer":{light:["#172a58","#d4a84f","#eef1f8","#fffaf0","#17213b","#5d6170","#c9b477"],dark:["#d4a84f","#6f85bb","#071127","#10204a","#fff4d3","#c8c9d2","#8f743e"]}
+  };
+  const selected=state.visualTheme||"monochrome";
+  const [primary,secondary,bg,panel,ink,muted,line]=(palettes[selected]||palettes.monochrome)[mode];
+  document.documentElement.dataset.colorMode=mode;
+  document.documentElement.dataset.visualTheme=selected;
   document.documentElement.style.setProperty("--p",primary);
   document.documentElement.style.setProperty("--s",secondary);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content",state.colorMode==="light"?"#f5f1ea":"#101925");
+  document.documentElement.style.setProperty("--bg",bg);
+  document.documentElement.style.setProperty("--panel",panel);
+  document.documentElement.style.setProperty("--ink",ink);
+  document.documentElement.style.setProperty("--muted",muted);
+  document.documentElement.style.setProperty("--line",line);
+  document.documentElement.style.setProperty("--theme-wash",`color-mix(in srgb, ${primary} 13%, ${bg})`);
+  document.documentElement.style.setProperty("--theme-surface",`color-mix(in srgb, ${primary} 6%, ${panel})`);
+  document.documentElement.style.setProperty("--theme-surface-strong",`color-mix(in srgb, ${secondary} 12%, ${panel})`);
+  document.documentElement.style.setProperty("--theme-border",`color-mix(in srgb, ${primary} 34%, ${line})`);
+  document.documentElement.style.setProperty("--theme-shadow",`color-mix(in srgb, ${primary} 20%, transparent)`);
+  document.documentElement.style.setProperty("--on-p",readableInk(primary));
+  document.documentElement.style.setProperty("--on-s",readableInk(secondary));
+  document.documentElement.style.setProperty("--on-grad",readableInk(mixThemeColors(primary,secondary)));
+  document.documentElement.style.setProperty("--character-p",primary);
+  document.documentElement.style.setProperty("--character-s",secondary);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content",bg);
 }
 
 async function explicitSave(label="저장 완료"){
@@ -810,6 +920,28 @@ async function explicitSave(label="저장 완료"){
     const synced=await auth.upload({reason:label});
     if(!synced)showToast("기기에는 저장했지만 계정 동기화는 완료하지 못했어요");
   }else showToast("기기에 저장되었습니다");
+}
+
+function openCharacterDeleteDialog(characterId){
+  const character=state.characters[characterId];
+  if(!character)return;
+  document.querySelector("[data-character-delete-dialog]")?.remove();
+  const dialog=document.createElement("dialog");
+  dialog.className="character-delete-dialog";
+  dialog.dataset.characterDeleteDialog=characterId;
+  dialog.innerHTML=`<form method="dialog"><div class="character-delete-dialog-icon" aria-hidden="true">!</div><small>CHARACTER DELETE</small><h2>${htmlEsc(objectText(character.name||"이름 없는 캐릭터"))} 삭제할까요?</h2><p>이 캐릭터의 주간 루틴, 생활 기록과 연결된 공식 관계도 함께 정리됩니다. 삭제한 뒤에는 되돌릴 수 없어요.</p><div class="character-delete-dialog-summary"><b>삭제되는 캐릭터</b><span>${htmlEsc(character.name||"이름 없음")}</span></div><div class="character-delete-dialog-actions"><button value="cancel">취소</button><button value="delete" class="danger">캐릭터 영구 삭제</button></div></form>`;
+  dialog.addEventListener("close",()=>{
+    if(dialog.returnValue==="delete"){
+      mobileCharacterEditorPane="";
+      mobileCharacterDraftDirty=false;
+      deleteCharacter(characterId);
+      render();
+      showToast("캐릭터를 삭제했습니다");
+    }
+    dialog.remove();
+  });
+  document.body.append(dialog);
+  dialog.showModal();
 }
 
 let menuNavigationListenerBound=false;
@@ -834,15 +966,54 @@ function bind(){
     };
   });
   const openNativeLog=()=>document.querySelector("[data-native-log-dialog]")?.showModal();
-  $("[data-open-native-log-card]")?.addEventListener("click",event=>{
-    if(event.target.closest("[data-tab]"))return;
-    openNativeLog();
+  const toggleNativeMoment=card=>{
+    if(!card)return;
+    const expanded=card.classList.toggle("expanded");
+    card.setAttribute("aria-expanded",String(expanded));
+    const button=card.querySelector("[data-toggle-native-moment]");
+    if(button){
+      button.setAttribute("aria-expanded",String(expanded));
+      button.textContent=expanded?(button.dataset.labelCollapse||"접기"):(button.dataset.labelExpand||"펼치기");
+    }
+  };
+  $$("[data-toggle-native-moment-card]").forEach(card=>{
+    let touchStart=null;
+    card.addEventListener("pointerdown",event=>{
+      touchStart={x:event.clientX,y:event.clientY,pointerId:event.pointerId};
+    },{passive:true});
+    card.addEventListener("pointerup",event=>{
+      if(!touchStart||touchStart.pointerId!==event.pointerId)return;
+      const moved=Math.hypot(event.clientX-touchStart.x,event.clientY-touchStart.y);
+      touchStart=null;
+      if(moved>12||event.target.closest("a"))return;
+      card.dataset.lastPointerToggle=String(Date.now());
+      toggleNativeMoment(card);
+    },{passive:true});
+    card.addEventListener("pointercancel",()=>{touchStart=null},{passive:true});
+    card.addEventListener("click",event=>{
+      if(event.target.closest("a"))return;
+      if(Date.now()-Number(card.dataset.lastPointerToggle||0)<650)return;
+      event.stopPropagation();
+      toggleNativeMoment(card);
+    });
+    card.addEventListener("keydown",event=>{
+      if(event.key!=="Enter"&&event.key!==" ")return;
+      if(event.target.closest("button")&&event.target!==card)return;
+      event.preventDefault();
+      toggleNativeMoment(card);
+    });
   });
-  $("[data-open-native-log-card]")?.addEventListener("keydown",event=>{
-    if(event.key!=="Enter"&&event.key!==" ")return;
-    if(event.target.closest("button")&&event.target!==event.currentTarget)return;
-    event.preventDefault();
-    openNativeLog();
+  $$("[data-open-native-log-card]").forEach(card=>{
+    card.addEventListener("click",event=>{
+      if(event.target.closest("[data-tab]"))return;
+      openNativeLog();
+    });
+    card.addEventListener("keydown",event=>{
+      if(event.key!=="Enter"&&event.key!==" ")return;
+      if(event.target.closest("button")&&event.target!==event.currentTarget)return;
+      event.preventDefault();
+      openNativeLog();
+    });
   });
   $("[data-refresh-observe]")?.addEventListener("click",event=>{
     event.stopPropagation();
@@ -865,7 +1036,10 @@ function bind(){
   $("[data-mobile-town-settings]")?.addEventListener("click",()=>{setMobileTownPanel("world");render()});
   $("[data-mobile-town-close]")?.addEventListener("click",()=>{setMobileTownPanel("");render()});
   $$("[data-mobile-town-character]").forEach(el=>el.onclick=()=>{setActive(el.dataset.mobileTownCharacter);render();centerMobileTownMap(el.dataset.mobileTownCharacter)});
-  try{enhanceDynamicForms()}catch(error){console.error("동적 편집 화면 연결 실패",error)}
+  try{
+    enhanceDynamicForms();
+    translateDynamicInterface(document.querySelector("#app"));
+  }catch(error){console.error("동적 편집 화면 연결 실패",error)}
   const cartKey="drawer-village-cart";
   const readCart=()=>{try{return JSON.parse(localStorage.getItem(cartKey)||"{}")||{}}catch{return {}}};
   const writeCart=cart=>{localStorage.setItem(cartKey,JSON.stringify(cart));render()};
@@ -950,14 +1124,20 @@ function bind(){
     moveCharacter(el.dataset.sort,Number(el.dataset.direction||0));
     render();
   });
-  $$("[data-delete-character]").forEach(el=>el.onclick=()=>{
-    const character=state.characters[el.dataset.deleteCharacter];
-    if(confirm(`이 캐릭터를 삭제하시겠습니까?\n\n이름: ${character?.name||"이름 없음"}\n주간 루틴과 연결된 공식 관계도 함께 삭제되며 되돌릴 수 없습니다.`)){
-      if(el.closest("[data-mobile-character-editor-dialog]")){mobileCharacterEditorPane="";mobileCharacterDraftDirty=false}
-      deleteCharacter(el.dataset.deleteCharacter);render();
-    }
+  $$("[data-delete-character]").forEach(el=>el.onclick=()=>openCharacterDeleteDialog(el.dataset.deleteCharacter));
+  $$("[data-roster]").forEach(el=>el.onclick=event=>{
+    event.stopPropagation();
+    const strip=el.closest(".roster");
+    if(strip)observeRosterScroll=strip.scrollLeft;
+    setActive(el.dataset.roster);
+    render();
+    requestAnimationFrame(()=>{const next=document.querySelector(".standard-observe-view .roster");if(next)next.scrollLeft=observeRosterScroll});
   });
-  $$("[data-roster],[data-person]").forEach(el=>el.onclick=event=>{event.stopPropagation();focusCharacter(el.dataset.roster||el.dataset.person)});
+  $$("[data-person]").forEach(el=>el.onclick=event=>{
+    event.stopPropagation();
+    setActive(el.dataset.person);
+    render();
+  });
   $$("[data-home-person]").forEach(el=>el.onclick=()=>focusHomeCharacter(el.dataset.homePerson));
   $("[data-all-sleep-home]")?.addEventListener("click",()=>focusHomeCharacter(state.activeId||state.order[0]));
   $$("[data-observe-town]").forEach(el=>el.onclick=()=>{switchTown(el.dataset.observeTown);render()});
@@ -1113,7 +1293,7 @@ function bind(){
         const response=await Promise.race([
           fetch("https://formsubmit.co/ajax/kkyaareuk@gmail.com",{
             method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},
-            body:JSON.stringify({_subject:`[서랍마을 ${category}] 사용자 피드백`,_template:"table",_captcha:"false",_replyto:info.user.email||"",분류:category,내용:message,현재_화면:TAB_META[state.activeTab]?.[0]||state.activeTab,선택_캐릭터:character?.name||"없음",보낸_시각:new Date().toLocaleString("ko-KR")})
+            body:JSON.stringify({_subject:`[서랍마을 ${category}] 사용자 피드백`,_template:"table",_captcha:"false",_replyto:info.user.email||"",분류:category,내용:message,현재_화면:PAGE_GUIDES[state.activeTab]?.[0]||state.activeTab,선택_캐릭터:character?.name||"없음",보낸_시각:new Date().toLocaleString("ko-KR")})
           }),
           new Promise((_,reject)=>setTimeout(()=>reject(new Error("메일 응답 시간 초과")),8000))
         ]);
@@ -1127,7 +1307,7 @@ function bind(){
     }catch(error){
       console.error("Firestore 피드백 저장 실패",error);
       const subject=encodeURIComponent(`[서랍마을 ${category}] 사용자 피드백`);
-      const body=encodeURIComponent(`${message}\n\n현재 화면: ${TAB_META[state.activeTab]?.[0]||state.activeTab}\n선택 캐릭터: ${character?.name||"없음"}\n보낸 시각: ${new Date().toLocaleString("ko-KR")}`);
+      const body=encodeURIComponent(`${message}\n\n현재 화면: ${PAGE_GUIDES[state.activeTab]?.[0]||state.activeTab}\n선택 캐릭터: ${character?.name||"없음"}\n보낸 시각: ${new Date().toLocaleString("ko-KR")}`);
       const gmailUrl=`https://mail.google.com/mail/?view=cm&fs=1&to=kkyaareuk%40gmail.com&su=${subject}&body=${body}`;
       const code=String(error?.code||error?.message||"알 수 없는 오류").replace("firebase/","");
       status.innerHTML=`피드백함 저장 실패 (${esc(code)}). Firebase 보안 규칙을 게시했는지 확인해 주세요. <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer">Gmail 작성창으로 대신 보내기</a>`;
@@ -1193,8 +1373,9 @@ function bind(){
   $$("[data-home-town]").forEach(el=>el.onchange=()=>{updateCharacter(el.dataset.homeTown,{townId:el.value});render()});
   $$("[data-personality-field]").forEach(el=>el.onchange=()=>{
     const mobileDraft=markMobileCharacterDraft(el);
-    updateCharacter(active().id,{[el.dataset.personalityField]:el.value},!mobileDraft);
-    render();
+    updateCharacter(active().id,{[el.dataset.personalityField]:el.value},false);
+    if(!mobileDraft)save(true);
+    renderPreservingCharacterEditorScroll(el);
   });
   $$("[data-personality-type]").forEach(el=>el.onclick=()=>{
     const character=active(),value=el.dataset.personalityType,current=Array.isArray(character.personalityTypes)?character.personalityTypes:[];
@@ -1203,7 +1384,9 @@ function bind(){
     else if(current.length<4)next=[...current,value];
     else return showToast("전체 성격 유형은 최대 4개까지 고를 수 있어요");
     const mobileDraft=markMobileCharacterDraft(el);
-    updateCharacter(character.id,{personalityTypes:next},!mobileDraft);render();
+    updateCharacter(character.id,{personalityTypes:next},false);
+    if(!mobileDraft)save(true);
+    renderPreservingCharacterEditorScroll(el);
   });
   const toggleTraitSetting=(key,value,element)=>{
     const character=active(),current=Array.isArray(character[key])?character[key]:[];
@@ -1212,7 +1395,9 @@ function bind(){
     else if(current.length<8)next=[...current,value];
     else return showToast("서사·인지 특성은 각 영역에서 최대 8개까지 고를 수 있어요");
     const mobileDraft=markMobileCharacterDraft(element);
-    updateCharacter(character.id,{[key]:next},!mobileDraft);render();
+    updateCharacter(character.id,{[key]:next},false);
+    if(!mobileDraft)save(true);
+    renderPreservingCharacterEditorScroll(element);
   };
   $$("[data-character-trait]").forEach(el=>el.onclick=()=>toggleTraitSetting("characterTraits",el.dataset.characterTrait,el));
   $$("[data-trait-expression]").forEach(el=>el.onclick=()=>toggleTraitSetting("traitExpressions",el.dataset.traitExpression,el));
@@ -1222,7 +1407,9 @@ function bind(){
   });
   $$("[data-trait-notes-in-scripts]").forEach(el=>el.addEventListener("change",e=>{
     const mobileDraft=markMobileCharacterDraft(el);
-    updateCharacter(active().id,{traitNotesInScripts:e.target.checked},!mobileDraft);render();
+    updateCharacter(active().id,{traitNotesInScripts:e.target.checked},false);
+    if(!mobileDraft)save(true);
+    renderPreservingCharacterEditorScroll(el);
   }));
   const setNestedValue=(target,path,value)=>{
     const parts=String(path||"").split("."),last=parts.pop();
@@ -1242,8 +1429,8 @@ function bind(){
       }
       const mobileDraft=markMobileCharacterDraft(el);
       updateCharacter(character.id,{bodyProfile},false);
-      if(!mobileDraft)save(el.tagName==="SELECT");
-      if(["appearance.leftEyeColor","appearance.rightEyeColor"].includes(el.dataset.bodyField))render();
+      if(!mobileDraft)save(true);
+      if(["appearance.leftEyeColor","appearance.rightEyeColor"].includes(el.dataset.bodyField))renderPreservingCharacterEditorScroll(el);
     });
   });
   $$("[data-body-list]").forEach(el=>el.onclick=()=>{
@@ -1257,10 +1444,12 @@ function bind(){
     const patch={bodyProfile};
     if(el.dataset.bodyList==="physicalTraits"&&legacyAppearance.includes(value))patch.appearanceTags=legacyAppearance.filter(item=>item!==value);
     const mobileDraft=markMobileCharacterDraft(el);
-    updateCharacter(character.id,patch,!mobileDraft);render();
+    updateCharacter(character.id,patch,false);
+    if(!mobileDraft)save(true);
+    renderPreservingCharacterEditorScroll(el);
   });
   $$("[data-field]").forEach(el=>el.oninput=()=>{
-    const numeric=["spiceTolerance","sweetPreference","socialEnergy","sensingIntuition","thinkingFeeling","perceivingJudging"].includes(el.dataset.field);
+    const numeric=["spiceTolerance","sweetPreference","socialEnergy","sensingIntuition","thinkingFeeling","perceivingJudging","homeVisualScale"].includes(el.dataset.field);
     const patch={[el.dataset.field]:numeric?Number(el.value):el.value};
     if(el.dataset.field==="attractionTarget")patch.attractedGenders={
       "여성에게 끌림":["여성"],"남성에게 끌림":["남성"],"여성과 남성에게 끌림":["여성","남성"],
@@ -1280,6 +1469,7 @@ function bind(){
       const labels=labelSets[el.dataset.levels]||labelSets.sweet;
       el.closest("label")?.querySelector("[data-range-label]")?.replaceChildren(document.createTextNode(labels[Number(el.value)]));
     }
+    if(el.dataset.field==="homeVisualScale")el.closest("label")?.querySelector("[data-home-visual-scale-value]")?.replaceChildren(document.createTextNode(`${Math.round(Number(el.value))}%`));
   });
   $$("[data-color]").forEach(el=>el.oninput=()=>{
     const mobileDraft=markMobileCharacterDraft(el);
@@ -1308,7 +1498,7 @@ function bind(){
     if(!["primary","secondary"].includes(field)||!/^#[0-9a-f]{6}$/i.test(value||""))return;
     updateCharacter(active().id,{theme:{...active().theme,[field]:value}},true);
     applyTheme();
-    render();
+    renderPreservingCharacterEditorScroll(el);
   });
   $$("[data-gradient]").forEach(el=>el.addEventListener("change",e=>{
     const mobileDraft=markMobileCharacterDraft(el);
@@ -1318,7 +1508,8 @@ function bind(){
   }));
   $$("[data-chip]").forEach(el=>el.onclick=()=>{
     const mobileDraft=markMobileCharacterDraft(el);
-    toggleChip(active().id,el.dataset.chip,el.dataset.value,!mobileDraft);
+    toggleChip(active().id,el.dataset.chip,el.dataset.value,false);
+    if(!mobileDraft)save(true);
     renderPreservingCharacterEditorScroll(el);
   });
   $$("[data-favorite-kind]").forEach(el=>el.onclick=()=>{
@@ -1363,7 +1554,7 @@ function bind(){
   $$("[data-delete-place]").forEach(el=>el.onclick=()=>{
     if(confirm("이 건물을 삭제할까요?")){deletePlace(el.dataset.deletePlace);render()}
   });
-  $("[data-save]")?.addEventListener("click",async()=>{await explicitSave("캐릭터 저장");advanceFirstSetupAfterCharacter()});
+  $$("[data-save]").forEach(button=>button.addEventListener("click",async()=>{await explicitSave("캐릭터 저장");advanceFirstSetupAfterCharacter()}));
   $("[data-catalog-save]")?.addEventListener("click",()=>explicitSave("취향 사전 저장"));
   $("[data-town-save]")?.addEventListener("click",()=>explicitSave("마을 저장"));
   $$("[data-catalog-image]").forEach(el=>el.onclick=()=>openCatalogIllustrationPicker(el.dataset.catalogImage,el.dataset.kind));
@@ -1384,7 +1575,15 @@ function bind(){
     const item=state.catalog.fashion.find(value=>value.id===button.dataset.item);if(!item)return;const field=button.dataset.fashionAttr,value=button.dataset.value,list=Array.isArray(item[field])?[...item[field]]:[];
     updateCatalogItem("fashion",item.id,{[field]:list.includes(value)?list.filter(entry=>entry!==value):[...list,value]});render();
   });
+  $$('[data-home-visual-mode]').forEach(button=>button.onclick=()=>{
+    updateCharacter(active().id,{homeVisualMode:button.dataset.homeVisualMode==="ld"?"ld":"sd"},true);
+    render();
+  });
   $$("[data-image]").forEach(el=>el.onclick=()=>pickImage(el.dataset.image,active().id));
+  $$('[data-clear-character-image]').forEach(button=>button.onclick=()=>{
+    setCharacterImage(active().id,button.dataset.clearCharacterImage,"");
+    render();
+  });
   $$("[data-room-bg]").forEach(el=>el.onclick=()=>pickImage("room",el.dataset.homeId,el.dataset.room));
   $$("[data-home-bg]").forEach(el=>el.onclick=()=>pickImage("home",el.dataset.homeBg));
   $$("[data-place-interior-image]").forEach(el=>el.onclick=()=>pickImage("placeInterior",el.dataset.placeInteriorImage));
@@ -1392,7 +1591,7 @@ function bind(){
   $$("[data-clear-room-bg]").forEach(el=>el.onclick=()=>{setHomeImage(el.dataset.homeId,el.dataset.room,"");render()});
   $$("[data-clear-home-bg]").forEach(el=>el.onclick=()=>{setHomeBackground(el.dataset.clearHomeBg,"");render()});
   $$("[data-clear-place-interior-image]").forEach(el=>el.onclick=()=>{setPlaceInteriorImage(el.dataset.clearPlaceInteriorImage,"");render()});
-  $$("[data-character-pane]").forEach(el=>el.onclick=()=>{setCharacterPane(el.dataset.characterPane);render()});
+  $$("[data-character-pane]").forEach(el=>el.onclick=()=>{setCharacterPane(el.dataset.characterPane);renderPreservingPageScroll(el)});
   $$("[data-profile-tags]").forEach(el=>el.onclick=()=>openProfileTagsDialog(el.dataset.profileTags));
   $$("[data-export-profile]").forEach(el=>el.addEventListener("click",openProfileExportDialog));
   $$("[data-setting]").forEach(el=>el.onchange=()=>{
@@ -1400,13 +1599,23 @@ function bind(){
     state[key]=el.value;
     if(key==="ownerName") localStorage.setItem("drawer-village-user-name",String(el.value||"").trim());
     save(true);
-    render();
+    renderPreservingPageScroll(el);
   });
   $$("button[data-color-mode]").forEach(button=>button.onclick=event=>{
     event.stopPropagation();
     state.colorMode=button.dataset.colorMode==="light"?"light":"dark";
     save(true);
-    render();
+    renderPreservingPageScroll(button);
+  });
+  $$("button[data-visual-theme]").forEach(button=>button.onclick=event=>{
+    event.stopPropagation();
+    state.visualTheme=button.dataset.visualTheme||"monochrome";
+    save(true);
+    renderPreservingPageScroll(button);
+  });
+  $("[data-open-visual-theme-dialog]")?.addEventListener("click",()=>{
+    const dialog=$("[data-visual-theme-dialog]");
+    if(dialog&&!dialog.open)dialog.showModal();
   });
   $("[data-sync-upload]")?.addEventListener("click",()=>window.ParallelCityAuth?.upload());
   $("[data-sync-download]")?.addEventListener("click",()=>window.ParallelCityAuth?.download());
@@ -1524,7 +1733,7 @@ function bind(){
     const editedFields=new Set(Array.isArray(state.characterViews[source][target]._editedFields)?state.characterViews[source][target]._editedFields:[]);
     editedFields.add(field);
     state.characterViews[source][target]._editedFields=[...editedFields];
-    if(["정하지 않음","선택하지 않음"].includes(select.value))delete state.characterViews[source][target][field];
+    if(["정하지 않음","설정하지 않음","선택하지 않음"].includes(select.value))delete state.characterViews[source][target][field];
     else state.characterViews[source][target][field]=select.value;
     if(field==="overall"){
       const summary=$$("[data-view-summary]").find(item=>item.dataset.viewSummary===`${source}:${target}`);
@@ -1605,8 +1814,17 @@ function applyImage(type,id,room,data){
   else setCharacterImage(id,type,data);
 }
 
-function navigateToTab(tab){
-  if(!["observe","home","character","catalog","relationship","routine","town","shop","settings"].includes(tab))return;
+const APP_TABS=["observe","home","character","catalog","relationship","routine","town","shop","settings"];
+function recordTabHistory(tab,replace=false){
+  if(!APP_TABS.includes(tab))return;
+  const url=new URL(location.href);
+  url.hash=`tab=${tab}`;
+  const next={...(history.state||{}),drawerVillageTab:tab};
+  if(replace)history.replaceState(next,"",url);
+  else if(history.state?.drawerVillageTab!==tab)history.pushState(next,"",url);
+}
+function navigateToTab(tab,{recordHistory=true}={}){
+  if(!APP_TABS.includes(tab))return;
   document.querySelector(".page-guide[open]")?.close("navigate");
   if(tab!=="character"){
     flushMobileCharacterDraft();
@@ -1624,8 +1842,11 @@ function navigateToTab(tab){
     }
   }
   state.activeTab=tab;
-  save();
+  if(recordHistory)recordTabHistory(tab);
+  resetScrollAfterRender=true;
+  document.documentElement.classList.add("page-switching");
   render();
+  requestAnimationFrame(()=>document.documentElement.classList.remove("page-switching"));
   if(tab==="town")centerMobileTownMap();
   window.scrollTo({top:0,behavior:"auto"});
 }
@@ -1798,7 +2019,7 @@ async function exportRelationshipMapPng(){
     foreign.replaceWith(group);
   }
   const style=document.createElementNS(svgNs,"style");
-  style.textContent=`.map-official rect{fill:#fffdf9;stroke:#d8cec4;stroke-width:2}.map-relation{font:800 15px sans-serif;fill:#33261f}.map-stage{font:600 11px sans-serif;fill:#6f625a}.map-heart{font:900 24px sans-serif;stroke:#fff;stroke-width:4;paint-order:stroke}`;
+  style.textContent=`.map-official rect{display:none}.map-relation{font:800 15px sans-serif;fill:#33261f;paint-order:stroke;stroke:#fffdf9;stroke-width:5px;stroke-linejoin:round}.map-stage{font:600 11px sans-serif;fill:#6f625a;paint-order:stroke;stroke:#fffdf9;stroke-width:4px;stroke-linejoin:round}.map-heart{font:900 24px sans-serif;stroke:#fff;stroke-width:4;paint-order:stroke}`;
   defs.after(style);
   const serialized=new XMLSerializer().serializeToString(clone);
   const blob=new Blob([serialized],{type:"image/svg+xml;charset=utf-8"});
@@ -1972,8 +2193,49 @@ function prepareCatalogIllustration(file){
   });
 }
 
+function prepareTransparentIcon(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("image-load-failed"))};
+    img.onload=()=>{
+      const size=512,padding=20,available=size-padding*2;
+      const scale=Math.min(available/img.naturalWidth,available/img.naturalHeight);
+      const width=Math.max(1,Math.round(img.naturalWidth*scale)),height=Math.max(1,Math.round(img.naturalHeight*scale));
+      const canvas=document.createElement("canvas"),context=canvas.getContext("2d");
+      canvas.width=size;canvas.height=size;
+      context.clearRect(0,0,size,size);
+      context.drawImage(img,Math.round((size-width)/2),Math.round((size-height)/2),width,height);
+      const data=canvas.toDataURL("image/png");
+      URL.revokeObjectURL(url);
+      resolve(data);
+    };
+    img.src=url;
+  });
+}
+
+function prepareContainedCharacterArt(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("image-load-failed"))};
+    img.onload=()=>{
+      const maxWidth=1000,maxHeight=1600,scale=Math.min(1,maxWidth/img.naturalWidth,maxHeight/img.naturalHeight);
+      const canvas=document.createElement("canvas"),context=canvas.getContext("2d");
+      canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+      canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+      context.clearRect(0,0,canvas.width,canvas.height);
+      context.drawImage(img,0,0,canvas.width,canvas.height);
+      const data=canvas.toDataURL("image/webp",.86);
+      URL.revokeObjectURL(url);
+      resolve(data);
+    };
+    img.src=url;
+  });
+}
+
 function cropImage(file,type){
   if(type==="catalogImage")return prepareCatalogIllustration(file);
+  if(type==="icon"||type==="petIcon")return prepareTransparentIcon(file);
+  if(/^ld(?:Neutral|Joy|Sad|Angry|Tired)$/.test(type))return prepareContainedCharacterArt(file);
   const ratios={photo:4/3,icon:1,petIcon:1,petPhoto:4/3,catalogImage:4/3,room:16/9,home:16/9,place:1,placeInterior:16/9};
   const ratio=ratios[type]||16/9;
   const output=ratio<1?600:ratio===1?500:800;
@@ -2004,8 +2266,7 @@ function cropImage(file,type){
       stage.onpointerup=e=>{stage.releasePointerCapture(e.pointerId);stage.classList.remove("dragging")};
       dialog.onclose=()=>{
         const applied=dialog.returnValue==="apply";
-        const transparent=["icon","petIcon"].includes(type);
-        const data=applied?canvas.toDataURL("image/webp",transparent ? .78 : .66):null;
+        const data=applied?canvas.toDataURL("image/webp",.66):null;
         URL.revokeObjectURL(url);dialog.remove();resolve(data);
       };
       draw();dialog.showModal();
@@ -2303,6 +2564,10 @@ window.addEventListener("drawer-village-storage-usage",()=>{if(state.activeTab==
 window.addEventListener("parallel-city-cloud-loaded",render);
 window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();deferredInstallPrompt=event;showInstallButton()});
 window.addEventListener("appinstalled",()=>{deferredInstallPrompt=null;document.querySelector("#install-drawer-village")?.remove();showToast("서랍마을 앱이 설치되었습니다")});
+window.addEventListener("popstate",event=>{
+  const tab=event.state?.drawerVillageTab;
+  if(APP_TABS.includes(tab))navigateToTab(tab,{recordHistory:false});
+});
 function scheduleLiveSceneRefresh(){
   const delay=(15+Math.floor(Math.random()*16))*60*1000;
   setTimeout(()=>{
@@ -2331,16 +2596,31 @@ document.addEventListener("change",event=>{
 });
 const mobileSiteQuery=window.matchMedia?.("(max-width:720px)");
 mobileSiteQuery?.addEventListener?.("change",()=>render());
+// A saved URL such as #tab=settings is useful while navigating inside the
+// running app, but it must not turn the next launch into a settings screen.
+// Every cold start and refresh begins at the observation home.
+state.activeTab="observe";
+recordTabHistory("observe",true);
 render();
 if(!maintenanceEnabled())showInstallButton();
 if(!maintenanceEnabled()){
-  import("./auth.js?v=20260809a").catch(error=>{
+  import("./auth.js?v=20260811o").catch(error=>{
     console.warn("로그인 기능을 불러오지 못했지만 게임은 계속 실행됩니다.",error);
     setAccountLabel("Google 로그인");
   });
 }
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260809a",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  const nativeRuntime=Boolean(window.DRAWER_VILLAGE_NATIVE||window.Capacitor?.isNativePlatform?.());
+  if(nativeRuntime){
+    // The Android package already carries every web asset. A service worker can
+    // otherwise keep serving an index.html from an older APK after an update.
+    Promise.all([
+      navigator.serviceWorker.getRegistrations().then(registrations=>Promise.all(registrations.map(registration=>registration.unregister()))),
+      globalThis.caches?.keys?.().then(keys=>Promise.all(keys.map(key=>caches.delete(key))))
+    ]).catch(error=>console.warn("앱의 이전 웹 캐시를 정리하지 못했습니다",error));
+  }else{
+    navigator.serviceWorker.register("./sw.js?v=20260811o",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+  }
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
 if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)lockPortrait();
