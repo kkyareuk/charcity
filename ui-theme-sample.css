@@ -1,6 +1,5 @@
 /* 달빛 서랍 극장
-   안정화 버전: 가변 크기 요소에 SVG border-image를 늘리지 않는다.
-   이후 PNG 스킨은 top / repeatable-middle / bottom 세 조각으로 연결한다. */
+   가변 크기 요소를 이미지로 늘이지 않고 HTML/CSS 색면·선·그림자로 그린다. */
 html[data-visual-theme="moonlit-drawer"]{
   --moon-night:#0c1730;
   --moon-navy:#182d5d;
@@ -24,7 +23,7 @@ html[data-color-mode][data-visual-theme="moonlit-drawer"] main{
 }
 
 /* 큰 화면과 가변 높이 박스: 늘어나는 한 장 그림 대신 안정적인 3단 색면을 사용한다. */
-html[data-visual-theme="moonlit-drawer"] :is(
+html[data-visual-theme="moonlit-drawer"] #app :is(
   .panel,.form,.settings-shell,.catalog-shell,.routine-shell,.shop-store,
   .relationship-page,.home-page,.town-edit,.mobile-character-dashboard,
   .desktop-character-editor,.character-manage-pane
@@ -39,7 +38,7 @@ html[data-visual-theme="moonlit-drawer"] :is(
   box-shadow:0 14px 34px #02091952!important;
 }
 
-html[data-visual-theme="moonlit-drawer"] :is(
+html[data-visual-theme="moonlit-drawer"] #app :is(
   .setting-card,.sync-panel,.feedback-card,.native-status-card,.native-log-card,
   .catalog-card,.catalog-dex-card,.favorite-group,.routine-day,.shop-cart,
   .premium-product,.relation,.character-menu,.town-tabs,.place-editor details,
@@ -102,7 +101,7 @@ html[data-visual-theme="moonlit-drawer"] .mobile-editor-head{
 }
 
 /* 닫기·뒤로가기: 장식 이미지의 네 모서리가 튀어나오지 않도록 고정형 버튼으로 둔다. */
-html[data-visual-theme="moonlit-drawer"] :is(
+html[data-visual-theme="moonlit-drawer"] #app :is(
   .visual-theme-dialog-head>button,.native-sub-header>button,.mobile-editor-head>button,
   .icon-button,.round-button
 ){
@@ -375,4 +374,161 @@ html[data-visual-theme="moonlit-drawer"] .visual-theme-options button[data-visua
   html[data-visual-theme="moonlit-drawer"] :is(.panel,.form,.settings-shell,.catalog-shell,.routine-shell,.shop-store,.relationship-page,.home-page,.town-edit,.mobile-character-dashboard){border-radius:18px!important}
   html[data-visual-theme="moonlit-drawer"] :is(.setting-card,.sync-panel,.feedback-card,.native-status-card,.native-log-card,.catalog-card,.catalog-dex-card,.routine-day,.premium-product,.mobile-character-heading,.mobile-character-pane-grid button){border-radius:15px!important}
   html[data-visual-theme="moonlit-drawer"] .mobile-character-editor-body{background:#fffdf8!important}
+}
+
+/* Character portraits and the observation side menu must remain unframed. */
+html[data-visual-theme="moonlit-drawer"] #app :is(
+  .native-character-strip,.home-character-strip,.observe-character-strip,
+  .mobile-character-strip,.native-game-menu
+) button{
+  border:0!important;
+  border-image:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Native page title: later generic light-mode rules must not wash the title out. */
+html[data-color-mode][data-visual-theme="moonlit-drawer"].native-app #app .native-sub-header{
+  border:0!important;
+  border-bottom:2px solid var(--moon-gold)!important;
+  background:linear-gradient(180deg,#203c76,#101e43)!important;
+  color:#fff8e5!important;
+  box-shadow:0 6px 18px #02091f66!important;
+}
+html[data-color-mode][data-visual-theme="moonlit-drawer"].native-app #app .native-sub-header :is(b,span,small){
+  color:#fff8e5!important;
+  -webkit-text-fill-color:#fff8e5!important;
+  text-shadow:0 1px 2px #0008!important;
+}
+html[data-color-mode][data-visual-theme="moonlit-drawer"].native-app #app .native-sub-header>button{
+  border:1px solid #f4df9d8f!important;
+  background:#0d1b3c!important;
+  color:#fff8e5!important;
+  -webkit-text-fill-color:#fff8e5!important;
+}
+
+/* The strip stays a portrait picker, not a row of stretched themed cards. */
+html[data-color-mode][data-visual-theme="moonlit-drawer"].native-app #app .mobile-character-strip button{
+  width:74px!important;
+  min-width:74px!important;
+  min-height:82px!important;
+  border:0!important;
+  border-image:none!important;
+  border-radius:18px!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html[data-color-mode][data-visual-theme="moonlit-drawer"].native-app #app .mobile-character-strip button.on{
+  outline:2px solid var(--moon-gold)!important;
+  outline-offset:-4px!important;
+  background:#fffaf0e8!important;
+}
+
+@media(max-width:720px){
+  html[data-visual-theme="moonlit-drawer"] #app :is(
+    .panel,.form,.settings-shell,.catalog-shell,.routine-shell,.shop-store,
+    .relationship-page,.home-page,.town-edit,.mobile-character-dashboard,
+    .desktop-character-editor,.character-manage-pane
+  ){
+    border-width:11px!important;
+    border-image-width:11px!important;
+  }
+  html[data-visual-theme="moonlit-drawer"] #app :is(
+    .setting-card,.sync-panel,.feedback-card,.native-status-card,.native-log-card,
+    .catalog-card,.catalog-dex-card,.favorite-group,.routine-day,.shop-cart,
+    .premium-product,.relation,.character-menu,.place-editor details,.font-preview,
+    .mobile-character-heading,.physical-appearance-settings,
+    .profile-attraction-settings,.health-accessibility-settings
+  ){
+    border-width:8px!important;
+    border-image-width:8px!important;
+  }
+}
+
+/* Production theme: responsive HTML/CSS surfaces. The PNG frame experiment is
+   disabled so controls keep their true click area and never split or misalign. */
+html[data-color-mode][data-visual-theme="moonlit-drawer"] #app :is(
+  .panel,.form,.settings-shell,.catalog-shell,.routine-shell,.shop-store,.relationship-page,.home-page,
+  .town-edit,.mobile-character-dashboard,.desktop-character-editor,.character-manage-pane,.setting-card,
+  .sync-panel,.feedback-card,.native-status-card,.native-log-card,.catalog-card,.catalog-dex-card,
+  .favorite-group,.routine-day,.shop-cart,.premium-product,.relation,.character-menu,.place-editor details,
+  .font-preview,.mobile-character-heading,.physical-appearance-settings,.profile-attraction-settings,
+  .health-accessibility-settings,.desktop-observe-scene,.desktop-observe-log,.character-ld-card
+){
+  border-image:none!important;
+  border:1px solid color-mix(in srgb,var(--moon-gold) 45%,var(--line))!important;
+  border-radius:18px!important;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--panel) 97%,#fff),color-mix(in srgb,var(--soft) 88%,var(--moon-blue) 12%))!important;
+  box-shadow:0 12px 28px #0e1f4b18,inset 0 1px #ffffffb8!important;
+}
+html[data-color-mode][data-visual-theme="moonlit-drawer"] #app :is(
+  .primary,.sync-actions button,.character-manage-actions button,.native-status-card-head button,
+  .native-log-card>div>span button,.visual-theme-dialog-footer button,.mobile-editor-head button,
+  header nav button,.character-tabs button,.editor-tabs button,.town-tabs button
+){
+  border-image:none!important;
+  border-width:1px!important;
+  border-style:solid!important;
+  border-radius:999px!important;
+  padding:9px 14px!important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 97%,#fff),color-mix(in srgb,var(--soft) 90%,var(--moon-blue) 10%))!important;
+  color:var(--ink)!important;
+  -webkit-text-fill-color:var(--ink)!important;
+  box-shadow:0 5px 14px #0e1f4b16!important;
+}
+html[data-color-mode][data-visual-theme="moonlit-drawer"] #app :is(
+  .primary,header nav button.on,.character-tabs button.on,.editor-tabs button.on,.town-tabs button.on
+){
+  border-color:color-mix(in srgb,var(--moon-gold) 75%,#fff)!important;
+  background:linear-gradient(145deg,var(--moon-blue),#294b8a)!important;
+  color:#fffaf0!important;
+  -webkit-text-fill-color:#fffaf0!important;
+  box-shadow:0 7px 18px #172f6c42,inset 0 1px #ffffff38!important;
+}
+@media(max-width:720px){
+  html[data-color-mode][data-visual-theme="moonlit-drawer"] #app :is(
+    .panel,.form,.settings-shell,.catalog-shell,.routine-shell,.shop-store,.relationship-page,.home-page,
+    .town-edit,.mobile-character-dashboard,.desktop-character-editor,.character-manage-pane,.setting-card,
+    .sync-panel,.feedback-card,.native-status-card,.native-log-card,.catalog-card,.catalog-dex-card,
+    .favorite-group,.routine-day,.shop-cart,.premium-product,.relation,.character-menu,.place-editor details,
+    .font-preview,.mobile-character-heading,.physical-appearance-settings,.profile-attraction-settings,
+    .health-accessibility-settings
+  ){border-width:1px!important}
+}
+
+#app :is(.home-display-editor-dialog,.character-request-dialog,.character-stats-dialog) button.primary{
+  border:1px solid color-mix(in srgb,var(--p) 62%,var(--line))!important;
+  border-radius:14px!important;
+  background:linear-gradient(135deg,var(--p),var(--s))!important;
+  color:var(--on-grad,#fff)!important;
+  -webkit-text-fill-color:var(--on-grad,#fff)!important;
+  box-shadow:0 8px 20px color-mix(in srgb,var(--p) 26%,transparent)!important;
+}
+
+html.native-app[data-active-tab="observe"] #app .native-character-picker button,
+html[data-color-mode="light"].native-app[data-active-tab="observe"] #app .native-character-picker button,
+html.native-app[data-active-tab="observe"] #app .native-character-picker button.on,
+html[data-color-mode="light"].native-app[data-active-tab="observe"] #app .native-character-picker button.on{
+  border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important
+}
+
+#app dialog:is(.home-display-editor-dialog,.character-request-dialog,.character-stats-dialog)>form,
+#app dialog:is(.home-display-editor-dialog,.character-request-dialog,.character-stats-dialog)>form>*{
+  min-width:0!important;max-width:100%!important;box-sizing:border-box!important
+}
+#app dialog:is(.home-display-editor-dialog,.character-request-dialog,.character-stats-dialog) .home-dialog-head>span{
+  min-width:0!important;overflow-wrap:anywhere
+}
+#app dialog:is(.home-display-editor-dialog,.character-request-dialog,.character-stats-dialog) button.primary{
+  width:100%!important;min-width:0!important;
+  background-color:var(--p)!important;
+  background-image:linear-gradient(135deg,var(--p),var(--s))!important;
+  color:var(--on-grad,#fff)!important;-webkit-text-fill-color:var(--on-grad,#fff)!important
+}
+html.native-app[data-active-tab="observe"][data-color-mode][data-visual-theme] #app dialog.character-request-dialog button[data-submit-character-request].primary,
+html.native-app[data-active-tab="observe"][data-color-mode][data-visual-theme] #app dialog.home-display-editor-dialog button.primary,
+html.native-app[data-active-tab="observe"][data-color-mode][data-visual-theme] #app dialog.character-stats-dialog button.primary{
+  background:#172a58 linear-gradient(135deg,var(--p),var(--s))!important;
+  color:var(--on-grad,#fff)!important;-webkit-text-fill-color:var(--on-grad,#fff)!important
 }
