@@ -1,12 +1,43 @@
 ﻿import {initializeApp} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
 import {getAuth,GoogleAuthProvider,setPersistence,browserLocalPersistence,onAuthStateChanged,signInWithPopup,signInWithRedirect,getRedirectResult,signInWithCredential,signOut} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import {getFirestore,doc,getDoc,setDoc,serverTimestamp,arrayUnion} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import {getFirestore,doc,getDoc,setDoc,collection,getDocs,deleteDoc,deleteField,serverTimestamp,arrayUnion} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 import {getStorage,ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
+import {gzip as gzipBytes,ungzip as ungzipBytes} from "./vendor/pako.esm.mjs";
 
 const cfg=window.PARALLEL_CITY_FIREBASE||{};
 const ready=Boolean(cfg.apiKey&&cfg.projectId&&cfg.authDomain);
 const status=text=>window.ParallelCity?.setAccountStatus(text);
 const clone=value=>JSON.parse(JSON.stringify(value));
+// Firestore는 배열 안에 배열이 들어간 값을 저장하지 못한다. 게임 상태에는
+// 방 배치·일정처럼 중첩 배열이 정상적으로 존재하므로 클라우드 문서에서만
+// 배열을 표시 객체로 감싸고, 기기에서 사용할 때 원래 배열로 되돌린다.
+const FIRESTORE_ARRAY_MARKER="__drawerVillageArrayV1";
+const encodeFirestoreState=value=>{
+  if(Array.isArray(value))return{[FIRESTORE_ARRAY_MARKER]:value.map(encodeFirestoreState)};
+  if(value&&typeof value==="object"){
+    const encoded={};
+    Object.entries(value).forEach(([key,item])=>{
+      if(item===undefined||typeof item==="function"||typeof item==="symbol")return;
+      encoded[key]=encodeFirestoreState(item);
+    });
+    return encoded;
+  }
+  if(typeof value==="number"&&!Number.isFinite(value))return null;
+  return value;
+};
+const decodeFirestoreState=value=>{
+  if(Array.isArray(value))return value.map(decodeFirestoreState);
+  if(value&&typeof value==="object"){
+    const keys=Object.keys(value);
+    if(keys.length===1&&Array.isArray(value[FIRESTORE_ARRAY_MARKER])){
+      return value[FIRESTORE_ARRAY_MARKER].map(decodeFirestoreState);
+    }
+    const decoded={};
+    Object.entries(value).forEach(([key,item])=>{decoded[key]=decodeFirestoreState(item)});
+    return decoded;
+  }
+  return value;
+};
 const canonicalRelationshipType=type=>({
   "폴리 관계":"연인","유사 연인":"연인","비공식 연인":"연인","연애 관계":"연인","커플":"연인",
   "절친":"친구","대학 동기":"친구","젊은 날의 친구들":"친구",
@@ -112,7 +143,11 @@ const digestBlob=async blob=>{
 function shortError(error){
   const code=String(error?.code||"unknown").replace(/^firebase\//,"");
   if(code.includes("character-slot-limit"))return `캐릭터 슬롯 초과 (${error?.detail||""}) · 초과 인원을 정리한 뒤 다시 저장해 주세요`;
+  if(code.includes("legacy-document-too-large"))return "동기화 데이터가 너무 큼 · 사진을 줄이거나 Firebase 프로젝트 권한을 확인해 주세요";
   if(code.includes("permission-denied")||code.includes("unauthorized"))return "저장 권한 확인 필요";
+  if(code.includes("resource-exhausted"))return "저장 데이터가 너무 큼 · 인물별 분할 저장을 다시 시도해 주세요";
+  if(code.includes("failed-precondition"))return "Firebase 데이터베이스 설정 확인 필요";
+  if(code.includes("unavailable"))return "Google 동기화 서버에 잠시 연결할 수 없음";
   if(code.includes("bucket-not-found")||code.includes("object-not-found"))return "사진 저장소 확인 필요";
   if(code.includes("quota"))return "Storage 용량 초과 · Firebase 요금제와 저장 파일을 확인해 주세요";
   if(code.includes("unauthenticated")||code.includes("billing")||code.includes("payment-required"))return "Firebase Storage는 Blaze 요금제 연결이 필요해요";
@@ -125,6 +160,140 @@ function shortError(error){
   return code;
 }
 const cloudDoc=()=>doc(db,"users",user.uid);
+const cloudCoreDoc=()=>doc(db,"users",user.uid,"sync","core");
+const cloudCharacters=()=>collection(db,"users",user.uid,"characters");
+const safeDocumentId=value=>encodeURIComponent(String(value||"unknown")).replaceAll("/","%2F");
+const cloudCharacterDoc=id=>doc(db,"users",user.uid,"characters",safeDocumentId(id));
+const cloudDays=id=>collection(db,"users",user.uid,"characters",safeDocumentId(id),"days");
+const cloudDayDoc=(id,dateKey)=>doc(db,"users",user.uid,"characters",safeDocumentId(id),"days",safeDocumentId(dateKey));
+
+async function readCloudGameState(rootData){
+  // 호환 형식으로 저장된 완전한 루트 상태가 있으면, 중간에 끊긴 v2
+  // 하위 문서보다 이것을 우선한다.
+  if(rootData?.syncFormat===1&&rootData?.gameStateGzip)return decodeCompressedLegacyState(rootData.gameStateGzip);
+  if(rootData?.syncFormat===1&&rootData?.gameState)return decodeFirestoreState(rootData.gameState);
+  let coreSnapshot;
+  try{coreSnapshot=await getDoc(cloudCoreDoc())}
+  catch(error){
+    // 아직 하위 문서 규칙을 배포하지 않은 기존 Firebase 프로젝트도
+    // 루트 문서 백업은 계속 읽고 쓸 수 있어야 한다.
+    if(canUseLegacySync(error))return rootData?.gameStateGzip
+      ?decodeCompressedLegacyState(rootData.gameStateGzip)
+      :decodeFirestoreState(rootData?.gameState||null);
+    throw error;
+  }
+  if(!coreSnapshot.exists())return rootData?.gameStateGzip
+    ?decodeCompressedLegacyState(rootData.gameStateGzip)
+    :decodeFirestoreState(rootData?.gameState||null);
+  const coreData=decodeFirestoreState(coreSnapshot.data()?.state||{});
+  const characters={};
+  const characterSnapshots=await getDocs(cloudCharacters());
+  for(const characterSnapshot of characterSnapshots.docs){
+    const documentData=characterSnapshot.data()||{};
+    const character=decodeFirestoreState(documentData.character||{});
+    const characterId=String(documentData.characterId||character.id||characterSnapshot.id);
+    const days={};
+    const daySnapshots=await getDocs(cloudDays(characterId));
+    daySnapshots.forEach(daySnapshot=>{
+      const dayData=daySnapshot.data()||{};
+      const dateKey=String(dayData.dateKey||daySnapshot.id);
+      days[dateKey]=decodeFirestoreState(dayData.day||{});
+    });
+    characters[characterId]={...character,id:character.id||characterId,days};
+  }
+  return {...coreData,characters};
+}
+
+async function writeCloudGameState(gameState){
+  const next=clone(gameState||{});
+  const characters=next.characters&&typeof next.characters==="object"?next.characters:{};
+  delete next.characters;
+  const wantedCharacterIds=new Set(Object.keys(characters).map(String));
+  const existingCharacters=await getDocs(cloudCharacters());
+  for(const existing of existingCharacters.docs){
+    const existingId=String(existing.data()?.characterId||existing.id);
+    if(wantedCharacterIds.has(existingId))continue;
+    const oldDays=await getDocs(collection(existing.ref,"days"));
+    await Promise.all(oldDays.docs.map(day=>deleteDoc(day.ref)));
+    await deleteDoc(existing.ref);
+  }
+
+  for(const [characterId,source] of Object.entries(characters)){
+    const character=clone(source||{});
+    const days=character.days&&typeof character.days==="object"?character.days:{};
+    delete character.days;
+    await setDoc(cloudCharacterDoc(characterId),{
+      characterId:String(characterId),
+      character:encodeFirestoreState(character),
+      updatedAt:serverTimestamp()
+    });
+    const wantedDays=new Set(Object.keys(days).map(String));
+    const existingDays=await getDocs(cloudDays(characterId));
+    await Promise.all(existingDays.docs.filter(day=>!wantedDays.has(String(day.data()?.dateKey||day.id))).map(day=>deleteDoc(day.ref)));
+    await Promise.all(Object.entries(days).map(([dateKey,day])=>setDoc(cloudDayDoc(characterId,dateKey),{
+      dateKey:String(dateKey),day:encodeFirestoreState(day),updatedAt:serverTimestamp()
+    })));
+  }
+  // core 문서는 모든 하위 문서 저장이 끝났다는 완료 표식이기도 하다.
+  // 마지막에 기록해야 다운로드가 부분 저장본을 완성본으로 오인하지 않는다.
+  await setDoc(cloudCoreDoc(),{state:encodeFirestoreState(next),updatedAt:serverTimestamp()});
+}
+
+const canUseLegacySync=error=>{
+  const code=String(error?.code||error?.message||"").toLowerCase();
+  return code.includes("permission-denied")||code.includes("failed-precondition")||code.includes("not-found");
+};
+const bytesToBase64=bytes=>{
+  let binary="";
+  for(let offset=0;offset<bytes.length;offset+=32768){
+    binary+=String.fromCharCode(...bytes.subarray(offset,offset+32768));
+  }
+  return btoa(binary);
+};
+const base64ToBytes=value=>Uint8Array.from(atob(String(value||"")),character=>character.charCodeAt(0));
+async function encodeCompressedLegacyState(gameState){
+  const json=JSON.stringify(encodeFirestoreState(gameState));
+  if(typeof CompressionStream==="function"){
+    const stream=new Blob([json],{type:"application/json"}).stream().pipeThrough(new CompressionStream("gzip"));
+    return bytesToBase64(new Uint8Array(await new Response(stream).arrayBuffer()));
+  }
+  return bytesToBase64(gzipBytes(json));
+}
+async function decodeCompressedLegacyState(value){
+  const bytes=base64ToBytes(value);
+  const json=typeof DecompressionStream==="function"
+    ?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).text()
+    :ungzipBytes(bytes,{to:"string"});
+  return decodeFirestoreState(JSON.parse(json));
+}
+async function writeLegacyCloudGameState(gameState,mediaManifest){
+  const encoded=encodeFirestoreState(gameState);
+  const encodedText=JSON.stringify(encoded);
+  const byteLength=new TextEncoder().encode(encodedText).byteLength;
+  if(byteLength<=700000){
+    await setDoc(cloudDoc(),{
+      gameState:encoded,
+      gameStateGzip:deleteField(),
+      gameStateCompression:deleteField(),
+      syncFormat:1,
+      mediaManifest,
+      updatedAt:serverTimestamp(),
+      profile:{name:accountName(),email:user.email||""}
+    },{merge:true});
+    return;
+  }
+  const compressed=await encodeCompressedLegacyState(gameState);
+  if(!compressed||new TextEncoder().encode(compressed).byteLength>780000)throw Object.assign(new Error("legacy-document-too-large"),{code:"sync/legacy-document-too-large"});
+  await setDoc(cloudDoc(),{
+    gameState:deleteField(),
+    gameStateGzip:compressed,
+    gameStateCompression:"gzip-base64-v1",
+    syncFormat:1,
+    mediaManifest,
+    updatedAt:serverTimestamp(),
+    profile:{name:accountName(),email:user.email||""}
+  },{merge:true});
+}
 async function registerSignedInUser(){
   if(!user)return;
   const guardKey=`drawer-village-login-write-${user.uid}`;
@@ -174,7 +343,6 @@ const publishEntitlements=value=>{
 const accessLabel=()=>[
   entitlements.characterSlotPacks?`캐릭터 슬롯 +${entitlements.characterSlotPacks*5}`:"",
   entitlements.townSlotPacks?`마을 슬롯 +${entitlements.townSlotPacks}`:"",
-  entitlements.storage50?"사진 50MB":"",
   entitlements.backgroundPacks.length?`배경 팩 ${entitlements.backgroundPacks.length}개`:"",
   entitlements.iconPacks.length?`아이콘 팩 ${entitlements.iconPacks.length}개`:"",
   entitlements.dlcPacks.length?`DLC ${entitlements.dlcPacks.length}개`:""
@@ -196,10 +364,45 @@ async function resetGuides(){
   if(user)await setDoc(cloudDoc(),{uiPreferences:{pageGuides:[]}},{merge:true});
 }
 
+const canvasBlob=(canvas,type,quality)=>new Promise(resolve=>canvas.toBlob(resolve,type,quality));
+async function imageBitmapForCloud(blob){
+  if(typeof createImageBitmap==="function")return createImageBitmap(blob);
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(blob),image=new Image();
+    image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};
+    image.onerror=error=>{URL.revokeObjectURL(url);reject(error)};
+    image.src=url;
+  });
+}
+async function optimizeCloudImage(original){
+  if(original.size<=MAX_IMAGE_BYTES)return original;
+  const image=await imageBitmapForCloud(original);
+  const sourceWidth=Number(image.width)||1,sourceHeight=Number(image.height)||1;
+  let scale=Math.min(1,2200/sourceWidth,2200/sourceHeight),quality=.9;
+  try{
+    for(let attempt=0;attempt<7;attempt+=1){
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.max(1,Math.round(sourceWidth*scale));
+      canvas.height=Math.max(1,Math.round(sourceHeight*scale));
+      const context=canvas.getContext("2d",{alpha:true});
+      context.imageSmoothingEnabled=true;
+      context.imageSmoothingQuality="high";
+      // drawImage의 전체 원본 영역을 전체 캔버스에 비례 축소한다. cover나
+      // 잘라내기는 사용하지 않으므로 세로 LD도 머리와 발끝이 모두 보존된다.
+      context.drawImage(image,0,0,sourceWidth,sourceHeight,0,0,canvas.width,canvas.height);
+      const optimized=await canvasBlob(canvas,"image/webp",quality);
+      if(optimized&&optimized.size<=MAX_IMAGE_BYTES)return optimized;
+      scale*=.82;
+      quality=Math.max(.68,quality-.04);
+    }
+  }finally{if(typeof image.close==="function")image.close()}
+  throw Object.assign(new Error("image-too-large"),{code:"storage/image-too-large"});
+}
+
 async function uploadDataUrl(dataUrl,manifest){
   if(uploadedCache.has(dataUrl))return uploadedCache.get(dataUrl);
-  const blob=await (await fetch(dataUrl)).blob();
-  if(blob.size>MAX_IMAGE_BYTES)throw Object.assign(new Error("image-too-large"),{code:"storage/image-too-large"});
+  const sourceBlob=await (await fetch(dataUrl)).blob();
+  const blob=await optimizeCloudImage(sourceBlob);
   const hash=await digestBlob(blob),known=manifest.items.find(item=>item.hash===hash);
   if(known){uploadedCache.set(dataUrl,known.url);return known.url}
   if(manifest.items.length+manifest.legacyCount>=maxPhotos())throw Object.assign(new Error("photo-limit"),{code:"storage/photo-limit"});
@@ -207,32 +410,45 @@ async function uploadDataUrl(dataUrl,manifest){
   if(usedBytes+blob.size>maxTotalBytes())throw Object.assign(new Error("total-size-limit"),{code:"storage/total-size-limit"});
   const ext=blob.type==="image/png"?"png":"webp";
   const target=ref(storage,`users/${user.uid}/media/${hash}.${ext}`);
-  await Promise.race([uploadBytes(target,blob,{contentType:blob.type||"image/webp",cacheControl:"public,max-age=31536000,immutable"}),new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("storage-timeout"),{code:"storage/timeout"})),25000))]);
-  const url=await Promise.race([getDownloadURL(target),new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("storage-timeout"),{code:"storage/timeout"})),8000))]);
+  await Promise.race([
+    uploadBytes(target,blob,{contentType:blob.type||"image/webp",cacheControl:"public,max-age=31536000,immutable"}),
+    new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("storage-timeout"),{code:"storage/timeout"})),30000))
+  ]);
+  const url=await Promise.race([
+    getDownloadURL(target),
+    new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("storage-timeout"),{code:"storage/timeout"})),10000))
+  ]);
   manifest.items.push({hash,size:blob.size,url});
   uploadedCache.set(dataUrl,url);
   return url;
 }
 
-async function prepareState(local,manifest){
+async function prepareState(local,manifest,previousState){
   const next=clone(local),jobs=[];
   const walk=(node,path=[])=>{
     if(!node||typeof node!=="object")return;
     Object.keys(node).forEach(key=>{
       const value=node[key],nextPath=[...path,key];
-      if(isData(value))jobs.push({node,key,value,path:nextPath.join("-").replace(/[^a-zA-Z0-9가-힣_-]/g,"_").slice(0,170)});
+      if(isData(value))jobs.push({node,key,value,path:nextPath});
       else if(value&&typeof value==="object")walk(value,nextPath);
     });
   };
-  walk(next,["game"]);
-  for(let i=0;i<jobs.length;i++){
+  walk(next,[]);
+  let photoFailures=0;
+  for(let i=0;i<jobs.length;i+=1){
     status(`${accountName()} · 사진 ${i+1}/${jobs.length} 올리는 중`);
-    jobs[i].node[jobs[i].key]=await uploadDataUrl(jobs[i].value,manifest);
+    try{jobs[i].node[jobs[i].key]=await uploadDataUrl(jobs[i].value,manifest)}
+    catch(error){
+      console.warn("사진 업로드에 실패했지만 기존 클라우드 사진과 정보 동기화를 유지합니다",error);
+      photoFailures+=1;
+      const previousValue=jobs[i].path.reduce((value,key)=>value&&typeof value==="object"?value[key]:undefined,previousState);
+      jobs[i].node[jobs[i].key]=typeof previousValue==="string"&&!isData(previousValue)?previousValue:"";
+    }
   }
   const usedUrls=storedPhotoUrls(next);
   manifest.items=manifest.items.filter(item=>usedUrls.has(item.url));
   manifest.legacyCount=Math.max(0,usedUrls.size-manifest.items.length);
-  return {gameState:next,mediaManifest:manifest,uploadedCount:jobs.length};
+  return {gameState:next,mediaManifest:manifest,uploadedCount:jobs.length-photoFailures,photoFailures};
 }
 
 async function login(){
@@ -262,7 +478,7 @@ async function upload({silent=false,reason=""}={}){
   try{
     status(`${accountName()} · 올리는 중`);
     const localState=window.ParallelCity.getState();
-    const allowedCharacters=7+(Math.max(0,Number(entitlements.characterSlotPacks)||0)*5);
+    const allowedCharacters=5+(Math.max(0,Number(entitlements.characterSlotPacks)||0)*5);
     const localCharacterCount=Array.isArray(localState?.order)
       ?new Set(localState.order.filter(id=>localState.characters?.[id])).size
       :Object.keys(localState?.characters||{}).length;
@@ -273,18 +489,31 @@ async function upload({silent=false,reason=""}={}){
       });
     }
     const previousSnapshot=await getDoc(cloudDoc()),previous=previousSnapshot.exists()?previousSnapshot.data():null;
+    const previousGameState=await readCloudGameState(previous);
     // 오래된 기기가 전체 상태를 다시 올리더라도 클라우드에 이미 남은 삭제 기록이
     // 캐릭터·관계·집·방보다 우선한다. 이 병합이 없으면 다른 기기의 낡은 배열이
     // 삭제한 관계를 같은 ID 또는 다른 ID로 되살릴 수 있다.
-    const tombstoneSafeState=previous?.gameState
-      ?applyLocalTombstones(localState,previous.gameState)
+    const tombstoneSafeState=previousGameState
+      ?applyLocalTombstones(localState,previousGameState)
       :localState;
-    const prepared=await prepareState(tombstoneSafeState,normalizeManifest(previous?.mediaManifest,previous?.gameState));
-    const {gameState,mediaManifest,uploadedCount}=prepared;
-    await setDoc(cloudDoc(),{gameState,mediaManifest,updatedAt:serverTimestamp(),profile:{name:accountName(),email:user.email||""}},{merge:true});
+    const prepared=await prepareState(tombstoneSafeState,normalizeManifest(previous?.mediaManifest,previousGameState),previousGameState);
+    const {gameState,mediaManifest,uploadedCount,photoFailures}=prepared;
+    let compatibilityMode=false;
+    try{
+      await writeCloudGameState(gameState);
+      await setDoc(cloudDoc(),{gameState:deleteField(),syncFormat:2,mediaManifest,updatedAt:serverTimestamp(),profile:{name:accountName(),email:user.email||""}},{merge:true});
+    }catch(error){
+      if(!canUseLegacySync(error))throw error;
+      await writeLegacyCloudGameState(gameState,mediaManifest);
+      compatibilityMode=true;
+    }
     publishStorageUsage(mediaManifest,gameState);
     status(`${accountName()} · ${reason||"계정 저장"} 완료`);
-    toast(uploadedCount?`동기화되었습니다 · 새 사진 ${uploadedCount}장 저장`:"동기화되었습니다");
+    toast(photoFailures
+      ?`정보 동기화 완료 · 사진 ${photoFailures}장은 기존 클라우드 사진을 유지`
+      :compatibilityMode?"사진과 정보가 동기화되었습니다 · 호환 저장 사용 중"
+        :uploadedCount?`사진과 정보가 동기화되었습니다 · 새 사진 ${uploadedCount}장 저장`
+          :"사진과 정보가 동기화되었습니다");
     return true;
   }catch(error){
     console.error(error);status(`저장 실패 · ${shortError(error)}`);
@@ -304,9 +533,9 @@ async function download({automatic=false}={}){
     const mergedGuides=[...new Set([...remoteGuides,...localGuideKeys()])];
     publishGuideState(mergedGuides);
     if(user&&mergedGuides.length!==remoteGuides.length)await setDoc(cloudDoc(),{uiPreferences:{pageGuides:mergedGuides}},{merge:true});
-    publishStorageUsage(documentData?.mediaManifest,documentData?.gameState);
+    const remote=await readCloudGameState(documentData);
+    publishStorageUsage(documentData?.mediaManifest,remote);
     publishEntitlements(documentData?.entitlements);
-    const remote=documentData?.gameState||null;
     if(!remote){status(`${accountName()} · 저장 데이터 없음`);if(!automatic)toast("저장된 데이터가 없습니다");return}
     const countCharacters=value=>Array.isArray(value?.characters)?value.characters.length:Object.keys(value?.characters||{}).length;
     const remoteCount=countCharacters(remote),localCount=countCharacters(window.ParallelCity.getState());
