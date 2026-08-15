@@ -1,6 +1,6 @@
-import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, moveHomeOnTown, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown, recordCharacterInteraction} from "./state.js?v=20260811ab";
-import {eventFor} from "./simulation.js?v=20260811ab";
-import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel, translateDynamicInterface} from "./views.js?v=20260815al";
+import {state, active, save, replaceState, createCharacter, deleteCharacter, setActive, setActiveHome, updateCharacter, toggleChip, addRelationship, updateRelationship, deleteRelationship, setHomeImage, setHomeBackground, setPlaceInteriorImage, setCharacterImage, setWorldBackground, addPlace, deletePlace, movePlace, moveHomeOnTown, updatePlace, resetAll, cloneState, setHomeEditMode, updateHome, createHome, deleteHome, addCharacterResidence, removeCharacterResidence, updateCharacterResidence, updateRoom, addRoom, setRoomType, deleteRoom, reorderRoom, addPet, updatePet, deletePet, setPetImage, addCar, updateCar, deleteCar, toggleFurniture, setHomeResidents, moveCharacter, addCatalogItem, updateCatalogItem, deleteCatalogItem, toggleFavorite, toggleOwned, togglePlaceStock, setCharacterPane, addTown, switchTown, deleteTown, recordCharacterInteraction} from "./state.js?v=20260815as";
+import {eventFor} from "./simulation.js?v=20260815as";
+import {renderApp, setAccountLabel, setAccountEntitlements, setMobileTownEditing, setMobileTownPanel, translateDynamicInterface} from "./views.js?v=20260815as";
 import {initializeLocalMediaState,persistLocalImage,informationOnlyState,localMediaUsage} from "./local-media.js?v=20260811ab";
 
 await initializeLocalMediaState(state);
@@ -666,7 +666,7 @@ function replaceFeedbackFormWithEmailLink(){
     ja:{title:"開発者へフィードバック",description:"種類を選ぶとメールアプリが開きます。確認に役立つ端末情報も自動で入ります。",recipient:"宛先",diagnostics:"自動添付される診断情報",prompt:"詳しい内容を下に入力してください。",types:[["不具合を報告","不具合","行った操作、問題、再現手順を記入してください。"],["機能を提案","機能提案","ほしい機能と利用場面を記入してください。"],["生活シーン・関係","シーン/関係","どの設定で不自然なシーンが出たか記入してください。必要な場合のみ名前を追加してください。"],["翻訳・文言","翻訳","言語と不自然または誤った文言を記入してください。"],["決済・アカウント・同期","決済/同期","エラー文と試した手順を記入してください。パスワードや秘密鍵は書かないでください。"],["デザイン・操作性","UI","読みにくい、操作しにくい場所と期待した表示を記入してください。"]]}
   }[state.uiLanguage]||null;
   const text=copy||{title:"개발자에게 피드백 보내기",description:"유형을 고르면 기기의 메일 앱이 열려요.",recipient:"받는 주소",diagnostics:"자동 첨부 진단 정보",prompt:"아래에 자세한 내용을 적어 주세요.",types:[["오류 신고","오류","문제와 재현 순서를 적어 주세요."]]};
-const build=String(window.DRAWER_VILLAGE_NATIVE_BUILD||"20260815al");
+const build=String(window.DRAWER_VILLAGE_NATIVE_BUILD||"20260815as");
   const deviceModel=navigator.userAgentData?.model||String(navigator.userAgent||"").match(/Android[^;]*;\s*([^;)]+?)\s+Build\//)?.[1]||"not exposed by this browser";
   const diagnostics=[
     `Build: ${build} (${window.DRAWER_VILLAGE_NATIVE?"Android app":"Web"})`,
@@ -996,10 +996,15 @@ function bind(){
   // iOS Safari에서 장면 합성 레이어가 click target을 바꾸는 경우에도
   // 고정 메뉴 버튼 자체가 항상 화면 이동을 처리하도록 직접 연결한다.
   $$(".native-game-menu [data-tab], .native-sub-header [data-tab]").forEach(button=>{
-    button.onclick=event=>{
+    const openTab=event=>{
       event.preventDefault();
       event.stopPropagation();
       navigateToTab(button.dataset.tab);
+    };
+    button.onclick=openTab;
+    button.onpointerup=event=>{
+      if(event.pointerType==="mouse")return;
+      openTab(event);
     };
   });
   const openNativeLog=()=>document.querySelector("[data-native-log-dialog]")?.showModal();
@@ -1667,7 +1672,8 @@ function bind(){
     updateCatalogItem("fashion",item.id,{[field]:list.includes(value)?list.filter(entry=>entry!==value):[...list,value]});render();
   });
   $$('[data-home-visual-mode]').forEach(button=>button.onclick=()=>{
-    updateCharacter(active().id,{homeVisualMode:button.dataset.homeVisualMode==="ld"?"ld":"sd"},true);
+    state.homeVisualMode=button.dataset.homeVisualMode==="ld"?"ld":"sd";
+    save(true);
     render();
   });
   $$("[data-image]").forEach(el=>el.onclick=()=>pickImage(el.dataset.image,active().id));
@@ -1687,7 +1693,7 @@ function bind(){
   $$("[data-export-profile]").forEach(el=>el.addEventListener("click",openProfileExportDialog));
   $$("[data-setting]").forEach(el=>el.onchange=()=>{
     const key=el.dataset.setting;
-    state[key]=el.value;
+    state[key]=["homeSdScale","homeLdScale"].includes(key)?Math.max(70,Math.min(150,Number(el.value)||100)):el.value;
     if(key==="ownerName") localStorage.setItem("drawer-village-user-name",String(el.value||"").trim());
     save(true);
     renderPreservingPageScroll(el);
@@ -1942,6 +1948,26 @@ function navigateToTab(tab,{recordHistory=true}={}){
   if(tab==="town")centerMobileTownMap();
   window.scrollTo({top:0,behavior:"auto"});
 }
+
+// Android WebView can drop the synthetic click when fixed menu buttons sit
+// above composited scene artwork. Capture the physical press before any scene
+// layer can retarget or cancel it. The existing click handlers remain as the
+// keyboard/mouse fallback.
+let lastNativeMenuPress=0;
+function captureNativeMenuPress(event){
+  if(event.type==="pointerdown"&&event.pointerType==="mouse")return;
+  const path=typeof event.composedPath==="function"?event.composedPath():[];
+  const button=path.find(node=>node?.matches?.(".native-game-menu [data-tab]"))||event.target?.closest?.(".native-game-menu [data-tab]");
+  if(!button)return;
+  const tab=button.dataset.tab,now=Date.now();
+  if(!APP_TABS.includes(tab)||(tab===state.activeTab&&now-lastNativeMenuPress<400))return;
+  lastNativeMenuPress=now;
+  event.preventDefault();
+  event.stopPropagation();
+  navigateToTab(tab);
+}
+document.addEventListener("pointerdown",captureNativeMenuPress,true);
+document.addEventListener("touchstart",captureNativeMenuPress,{capture:true,passive:false});
 
 function centerMobileTownMap(characterId){
   requestAnimationFrame(()=>{
@@ -2717,7 +2743,7 @@ if("serviceWorker" in navigator){
       globalThis.caches?.keys?.().then(keys=>Promise.all(keys.map(key=>caches.delete(key))))
     ]).catch(error=>console.warn("앱의 이전 웹 캐시를 정리하지 못했습니다",error));
   }else{
-    navigator.serviceWorker.register("./sw.js?v=20260815al",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
+    navigator.serviceWorker.register("./sw.js?v=20260815as",{updateViaCache:"none"}).then(registration=>registration.update()).catch(error=>console.warn("오프라인 업데이트 준비 실패",error));
   }
 }
 const lockPortrait=()=>screen.orientation?.lock?.("portrait").catch(()=>{});
