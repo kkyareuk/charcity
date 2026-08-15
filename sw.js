@@ -1,4 +1,4 @@
-const CACHE_VERSION="drawer-village-v20260811y";
+const CACHE_VERSION="drawer-village-v20260815af";
 const CORE=[
   "./",
   "./index.html",
@@ -8,7 +8,7 @@ const CORE=[
   "./privacy.html",
   "./app.css",
   "./town-fit.css",
-  "./ui-theme-sample.css",
+  "./interface-system.css",
   "./app.js",
   "./state.js",
   "./simulation.js",

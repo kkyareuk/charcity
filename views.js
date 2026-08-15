@@ -1,10 +1,10 @@
-import {state,active,characterViewFor,explicitCharacterViewFor} from "./state.js?v=20260811y";
-import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260811y";
+import {state,active,characterViewFor,explicitCharacterViewFor} from "./state.js?v=20260811ab";
+import {eventFor as simulateEventFor,visibleTimeline as simulateVisibleTimeline,charactersAtPlace,homeGroups} from "./simulation.js?v=20260811ab";
 // Cache-busted state module is imported above; this comment intentionally keeps the view bundle versioned.
 const esc=(x="")=>String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const I18N={
-  en:{brandName:"Drawer Village",observe:"Observe",home:"Home",character:"Characters",catalog:"Collection",relationship:"Relationships",routine:"Weekly routine",town:"Town",shop:"Shop",settings:"Settings",saved:"Saved on this device",brandTagline:"Character life observation game",currentMoment:"Current moment",todayLog:"Today's log",expand:"Expand",collapse:"Collapse",viewAll:"View all",viewHome:"View home",language:"Language",languageHelp:"English covers the main interface, and more life scenes and relationship text are translated with every update.",languageNote:"English Beta · Interface and selected life scenes translated; coverage keeps expanding."},
-  ja:{brandName:"ひきだし村",observe:"観察",home:"家",character:"キャラクター",catalog:"好み図鑑",relationship:"関係",routine:"週間ルーティン",town:"村",shop:"ショップ",settings:"設定",saved:"端末に保存済み",brandTagline:"引き出しの中のキャラクター生活観察ゲーム",currentMoment:"今この瞬間",todayLog:"今日の記録",expand:"開く",collapse:"閉じる",viewAll:"すべて見る",viewHome:"家を見る",language:"言語",languageHelp:"日本語は基本画面に対応し、生活シーンや関係文もアップデートごとに翻訳を増やしています。",languageNote:"日本語ベータ・基本画面と一部の生活シーンに対応。翻訳範囲を継続して拡大します。"}
+  en:{brandName:"Drawer Village",observe:"Observe",home:"Home",character:"Characters",catalog:"Collection",relationship:"Relationships",routine:"Weekly routine",statistics:"Statistics",town:"Town",shop:"Shop",settings:"Settings",saved:"Saved on this device",brandTagline:"Character life observation game",currentMoment:"Current moment",todayLog:"Today's log",expand:"Expand",collapse:"Collapse",viewAll:"View all",viewHome:"View home",language:"Language",languageHelp:"English covers the main interface, and more life scenes and relationship text are translated with every update.",languageNote:"English Beta · Interface and selected life scenes translated; coverage keeps expanding."},
+  ja:{brandName:"ひきだし村",observe:"観察",home:"家",character:"キャラクター",catalog:"好み図鑑",relationship:"関係",routine:"週間ルーティン",statistics:"統計",town:"村",shop:"ショップ",settings:"設定",saved:"端末に保存済み",brandTagline:"引き出しの中のキャラクター生活観察ゲーム",currentMoment:"今この瞬間",todayLog:"今日の記録",expand:"開く",collapse:"閉じる",viewAll:"すべて見る",viewHome:"家を見る",language:"言語",languageHelp:"日本語は基本画面に対応し、生活シーンや関係文もアップデートごとに翻訳を増やしています。",languageNote:"日本語ベータ・基本画面と一部の生活シーンに対応。翻訳範囲を継続して拡大します。"}
 };
 const t=(key,fallback)=>I18N[state.uiLanguage]?.[key]||fallback;
 const uiLocale=()=>({en:"en-US",ja:"ja-JP"}[state.uiLanguage]||"ko-KR");
@@ -556,7 +556,7 @@ function sceneAvatar(c,cls="",tone="neutral",mode="sd"){
   return avatar(c,cls);
 }
 function header(){
-  const tabs=[["observe",t("observe","관찰"),"◉"],["home",t("home","집"),"⌂"],["character",t("character","캐릭터"),"♙"],["catalog",t("catalog","취향 사전"),"◇"],["relationship",t("relationship","관계"),"∞"],["routine",t("routine","주간 루틴"),"▦"],["town",t("town","마을"),"▧"],["shop",t("shop","상점"),"♢"],["settings",t("settings","설정"),"⚙"]];
+  const tabs=[["observe",t("observe","관찰"),"◉"],["home",t("home","집"),"⌂"],["character",t("character","캐릭터"),"♙"],["catalog",t("catalog","취향 사전"),"◇"],["relationship",t("relationship","관계"),"∞"],["routine",t("routine","주간 루틴"),"▦"],["statistics",t("statistics","통계"),"▥"],["town",t("town","마을"),"▧"],["shop",t("shop","상점"),"♢"],["settings",t("settings","설정"),"⚙"]];
   const current=tabs.find(([key])=>key===state.activeTab)||tabs[0];
   const nativeBar=state.activeTab==="observe"?"":`<div class="native-sub-header"><button type="button" data-tab="observe" aria-label="${esc(t("메인 화면으로 돌아가기","메인 화면으로 돌아가기"))}">‹</button><b>${current[1]}</b><span>${esc(t("brandName","서랍마을"))}</span></div>`;
   return `<header><div class="brand"><span class="logo"><img src="./icons/drawer-village-logo.png" alt="${esc(t("brandName","서랍마을"))}"></span><div><h1>${t("brandName","서랍마을")}</h1><small>${t("brandTagline","서랍 속 캐릭터 생활 관찰 게임")}</small></div>${previewMode()?`<span class="preview-badge">${esc(previewConfig().label||"사전 체험")}</span>`:""}</div><nav>${tabs.map(([k,n,icon])=>`<button data-tab="${k}" class="${state.activeTab===k?"on":""}"><span class="tab-icon tab-icon-${k}" data-menu-icon="${k}" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join("")}</nav><span id="save-state">${t("saved","기기에 저장됨")}</span></header>${nativeBar}`;
@@ -760,6 +760,7 @@ function nativeSceneActionProp(person,entry,actionKind,text,individual=false){
   else if(actionKind==="beans-organizing")symbol="🫘";
   else if(actionKind==="pet-care")symbol="🧶";
   else if(actionKind==="sweeping")symbol="🧹";
+  else if(actionKind==="shoe-care")symbol="👞";
   else if(actionKind==="dishwashing"||actionKind==="wiping")symbol="🧽";
   else if(actionKind==="laundry")symbol="🧺";
   else if(actionKind==="spice-organizing")symbol="🧂";
@@ -777,9 +778,10 @@ function nativeSceneActionProp(person,entry,actionKind,text,individual=false){
   else if(actionKind==="gardening")symbol="🪴";
   else if(actionKind==="mail")symbol="✉️";
   if(!symbol)return "";
+  const propVariant=symbol==="🪥"?" action-prop-toothbrush":symbol==="👞"?" action-prop-shoe":"";
   const image=item?.image?`<img src="${esc(item.image)}" alt="">`:esc(symbol);
   const title=item?.name?`${person?.name||"캐릭터"} · ${item.name}`:`${person?.name||"캐릭터"} · ${symbol}`;
-  return `<span class="${individual?"native-person-action-prop":"native-scene-action-prop"} action-prop-${actionKind}" title="${esc(title)}" aria-hidden="true">${image}</span>`;
+  return `<span class="${individual?"native-person-action-prop":"native-scene-action-prop"} action-prop-${actionKind}${propVariant}" title="${esc(title)}" aria-hidden="true">${image}</span>`;
 }
 function isRomanticCharacterView(view){
   const overall=String(view?.overall||"").trim();
@@ -920,6 +922,7 @@ function nativeScenePresentation(c,entry,visualMode="sd"){
     :/빗자루|바닥.{0,12}(쓸|청소)|쓸고|쓸어/.test(text)?"sweeping"
       :/세수|세안|이를 닦|양치|칫솔|치약|샤워|목욕|머리를 감|몸을 씻|손을 씻|면도/.test(text)?"washing-up"
       :/설거지|그릇.{0,12}(씻|닦)|식기.{0,12}(씻|닦)|접시.{0,12}(씻|닦)|컵.{0,12}(씻|닦)|도구.{0,12}(씻|닦)|물뿌리개.{0,12}(씻|닦)|세척/.test(text)?"dishwashing"
+        :/(?:신발|구두|운동화|부츠).{0,18}(?:손질|닦|솔질|광|먼지|얼룩)|(?:손질|닦|솔질|광).{0,18}(?:신발|구두|운동화|부츠)/.test(text)?"shoe-care"
         :/(?:사진|앨범|이미지|포토).{0,28}(?:정리|정돈|분류|고르|이름|폴더|파일|붙이)|(?:정리|정돈|분류|폴더|파일).{0,28}(?:사진|앨범|이미지|포토)/.test(text)?"organizing"
           :/(?:문서|서류|자료|원고|파일).{0,28}(?:정리|정돈|분류|고르|이름|폴더|붙이)|(?:정리|정돈|분류|폴더).{0,28}(?:문서|서류|자료|원고|파일)/.test(text)?"organizing"
           :/(?:빨래|옷|의류).{0,20}(?:정리|정돈|접|개|분류|옷장|서랍)/.test(text)?"organizing"
@@ -1282,7 +1285,7 @@ function buildingDetailDialogs(){
   }).join("");
   return placeDialogs+homeDialogs;
 }
-function characterStatisticsDialog(){
+function characterStatisticsDialog(standalone=false){
   const characters=state.order.map(id=>state.characters[id]).filter(Boolean),total=characters.length;
   const distribution=(values,limit=8)=>{
     const counts=new Map();
@@ -1364,8 +1367,17 @@ function characterStatisticsDialog(){
     ["흡연자 비율",`${smokerRatio}%`]
   ];
   const charts=[["운전면허 보유",driverRatio],["흡연 캐릭터",smokerRatio],["신체 설정 반영",bodyConfiguredRatio],["보조기기·접근성 설정",assistiveRatio]];
-  return `<dialog class="character-stats-dialog" data-character-stats-dialog><form method="dialog"><div class="home-dialog-head"><span><small>CHARACTER STATISTICS</small><h2>내 캐릭터 통계 보고서</h2></span><button value="close" aria-label="닫기">×</button></div><p><span>현재 저장된</span> <b>${total}</b><span>명의 설정을 항목별 비율과 평균으로 모아 보여줘요.</span></p><div class="character-stat-summary"><b>${total}</b><span>저장된 캐릭터</span></div><div class="character-stat-highlights">${summaryCards.map(([label,value])=>`<article><small>${label}</small><b>${value}</b></article>`).join("")}</div><div class="character-stat-donuts">${charts.map(([label,percent],index)=>`<article data-percent="${percent}" style="--chart-percent:${percent};--chart-index:${index}"><i><b>${percent}%</b></i><span>${label}</span></article>`).join("")}</div><div class="character-stat-grid">${groups.map(([title,items])=>`<section><h3>${title}</h3><ol>${rows(items)}</ol></section>`).join("")}</div><div class="character-stat-actions"><button type="button" class="primary" data-download-character-stats>보고서 다운로드</button><button value="close">닫기</button></div></form></dialog>`;
+  const genderItems=groups[0][1],genderCount=Math.max(1,genderItems.reduce((sum,[,count])=>sum+count,0));
+  const genderColor=label=>/여성|여자|Female|女性/.test(label)?"#f28bb8":/남성|남자|Male|男性/.test(label)?"#5b8def":"#202124";
+  let genderCursor=0;
+  const genderStops=genderItems.map(([label,count])=>{const start=genderCursor;genderCursor+=count/genderCount*100;return `${genderColor(label)} ${start.toFixed(2)}% ${genderCursor.toFixed(2)}%`}).join(",")||"#d9dde2 0 100%";
+  const genderChart=`<section class="character-stat-gender"><div class="character-stat-gender-pie" style="--gender-pie:conic-gradient(${genderStops})"><b>${total}</b><small>명</small></div><div><h3>성별 분포</h3><ul>${genderItems.map(([label,count])=>`<li><i style="--gender-color:${genderColor(label)}"></i><b>${esc(label)}</b><span>${count}명 · ${total?Math.round(count/total*100):0}%</span></li>`).join("")}</ul></div></section>`;
+  const rankingGroups=groups.filter(([,items])=>items.length).slice(0,12);
+  const rankings=`<div class="character-stat-rankings">${rankingGroups.map(([title,items])=>`<section><h3><span>${title}</span> TOP 3</h3><ol>${items.slice(0,3).map(([label,count],index)=>`<li><em>${index+1}</em><b>${esc(label)}</b><span>${count}명</span></li>`).join("")}</ol></section>`).join("")}</div>`;
+  const content=`<div class="home-dialog-head"><span><small>CHARACTER STATISTICS</small><h2>내 캐릭터 통계 보고서</h2></span>${standalone?"":`<button value="close" aria-label="닫기">×</button>`}</div><p><span>현재 저장된</span> <b>${total}</b><span>명의 설정을 항목별 비율과 평균으로 모아 보여줘요.</span></p><div class="character-stat-summary"><b>${total}</b><span>저장된 캐릭터</span></div><div class="character-stat-highlights">${summaryCards.map(([label,value])=>`<article><small>${label}</small><b>${value}</b></article>`).join("")}</div>${genderChart}<div class="character-stat-donuts">${charts.map(([label,percent],index)=>`<article data-percent="${percent}" style="--chart-percent:${percent};--chart-index:${index}"><i><b>${percent}%</b></i><span>${label}</span></article>`).join("")}</div>${rankings}<div class="character-stat-grid">${groups.map(([title,items])=>`<section><h3>${title}</h3><ol>${rows(items)}</ol></section>`).join("")}</div><div class="character-stat-actions"><button type="button" class="primary" data-download-character-stats>보고서 다운로드</button>${standalone?"":`<button value="close">닫기</button>`}</div>`;
+  return standalone?`<section class="panel character-statistics-page" data-character-statistics-page>${content}</section>`:`<dialog class="character-stats-dialog" data-character-stats-dialog><form method="dialog">${content}</form></dialog>`;
 }
+function statistics(){return characterStatisticsDialog(true)}
 function observe(){
   const localIds=state.order.filter(id=>visibleTownId(state.characters[id])===state.activeTownId);
   const mobileHome=Boolean(document.documentElement?.classList?.contains?.("native-app"));
@@ -1404,9 +1416,8 @@ function observe(){
   // 넣지 않아 예전 CSS가 남아 있어도 거대한 얼굴이 다시 나타나지 않는다.
   const sceneActors=`${presentation.lineupHtml?"":sceneAvatar(c,"native-main-character",presentation.tone,visualMode)}${presentation.sleepMarkHtml}${presentation.lineupHtml}${presentation.conversationHtml}${presentation.thoughtHtml}${presentation.actionHtml}${presentation.companionHtml}${presentation.petHtml}<i></i>${itemOrbit}`;
   const visualToggle=hasLd&&hasSd?`<div class="home-visual-toggle" aria-label="홈 캐릭터 표현 전환"><button type="button" data-home-visual-mode="sd" class="${visualMode==="sd"?"on":""}">SD</button><button type="button" data-home-visual-mode="ld" class="${visualMode==="ld"?"on":""}">LD</button></div>`:"";
-  const homeTools=`<div class="home-observe-tools" aria-label="홈 화면 도구"><button type="button" data-open-home-display-editor>화면 편집</button><button type="button" data-open-character-stats>통계</button></div>`;
-  const homeDisplayEditor=`<dialog class="home-display-editor-dialog" data-home-display-editor-dialog><form method="dialog"><div class="home-dialog-head"><span><small>HOME DISPLAY</small><h2>홈 화면 편집</h2></span><button value="close" aria-label="닫기">×</button></div><p>${esc(c.name)}의 SD와 LD 크기는 서로 따로 저장돼요.</p><label>홈화면 기본 표현<select data-home-display-field="homeVisualMode" data-character-id="${c.id}"><option value="sd" ${c.homeVisualMode!=="ld"?"selected":""}>SD · 아이콘</option><option value="ld" ${c.homeVisualMode==="ld"?"selected":""} ${hasLd?"":"disabled"}>LD · 전신 일러스트</option></select></label><label>SD 이미지 크기 <b data-home-display-value="homeSdScale">${Math.round(Number(c.homeSdScale)||Number(c.homeVisualScale)||100)}%</b><input type="range" min="70" max="150" step="5" value="${Math.round(Number(c.homeSdScale)||Number(c.homeVisualScale)||100)}" data-home-display-field="homeSdScale" data-character-id="${c.id}"></label><label>LD 이미지 크기 <b data-home-display-value="homeLdScale">${Math.round(Number(c.homeLdScale)||Number(c.homeVisualScale)||100)}%</b><input type="range" min="70" max="150" step="5" value="${Math.round(Number(c.homeLdScale)||Number(c.homeVisualScale)||100)}" data-home-display-field="homeLdScale" data-character-id="${c.id}" ${hasLd?"":"disabled"}></label><small>두 명이 함께 나올 때도 각 LD의 높이와 크기는 한 명일 때와 같고, 위치만 왼쪽과 오른쪽으로 나뉩니다.</small><button class="primary" value="close">완료</button></form></dialog>`;
-  const homeDialogs=`${homeDisplayEditor}${characterStatisticsDialog()}`;
+  const homeTools="";
+  const homeDialogs="";
   const desktopScene=`<section class="desktop-observe-scene native-app" aria-label="${esc(c.name)}의 지금 이 순간"><div class="desktop-scene-canvas scene-tone-${presentation.tone} scene-action-${presentation.actionKind}" style="--native-own:${esc(c.theme?.primary||"#176b60")};--native-own-secondary:${esc(c.theme?.secondary||c.theme?.primary||"#176b60")}"><div class="native-observe-backdrop" style="background-image:url(&quot;${esc(nativeBackground)}&quot;)"></div><div class="native-observe-shade"></div><div class="native-scene-atmosphere atmosphere-${presentation.atmosphere}" aria-hidden="true"></div>${presentation.effects}${visualToggle}${homeTools}<div class="desktop-scene-copy"><small>${t("currentMoment","지금 이 순간")}</small><h1>${esc(c.name)} · ${esc(e.title)}</h1><p>${esc(e.desc)}</p><b>${location}</b></div><div class="native-character-stage ${stageClasses}" style="--home-visual-scale:${visualScale}" aria-label="${esc(c.name)} 현재 장면">${sceneActors}</div></div></section>`;
   const statusCard=`<article class="native-status-card" data-toggle-native-moment-card role="button" tabindex="0" aria-expanded="false"><div class="native-status-card-head"><small>${t("currentMoment","지금 이 순간")}</small><button type="button" data-toggle-native-moment aria-expanded="false" data-label-expand="${t("expand","펼치기")}" data-label-collapse="${t("collapse","접기")}">${t("expand","펼치기")}</button></div><h1>${esc(e.title)}</h1><p>${esc(e.desc)}</p><b>${location}</b></article>`;
   const logCard=`<section class="native-log-card" data-open-native-log-card role="button" tabindex="0" aria-label="오늘의 기록 전체 보기"><div><b>${t("todayLog","오늘의 기록")} <small class="native-log-open-hint">눌러서 펼쳐 보기 ↗</small></b><span><button type="button" data-open-native-log>${t("viewAll","전체 보기")}</button><button type="button" data-tab="home">${t("viewHome","집 보기")}</button></span></div><ol>${nativeLog||emptyLog}</ol></section>`;
@@ -1874,10 +1885,10 @@ function character(){
     <section class="panel form">
       <section class="mobile-character-dashboard" style="--character-own:${esc(c.theme?.primary||"#176b60")};--character-secondary:${esc(c.theme?.secondary||c.theme?.primary||"#176b60")}">
         <div class="mobile-character-top"><div class="mobile-character-strip">${mobileStrip}</div><div><button type="button" data-new ${state.order.length>=limit?"disabled":""}>＋</button><button type="button" data-open-character-reorder>위치 바꾸기</button></div></div>
-        <div class="mobile-character-heading">${avatar(c)}<span><small>CHARACTER SETTING</small><h1>${esc(c.name)}</h1><p>편집할 항목을 선택하세요.</p></span><div class="character-file-actions mobile-character-file-actions"><button type="button" data-export-profile>프로필 내보내기</button><button type="button" class="primary" data-save>캐릭터 저장</button><button type="button" class="danger" data-delete-character="${c.id}">캐릭터 삭제</button></div></div>
+        <div class="mobile-character-heading">${avatar(c)}<span><small>CHARACTER SETTING</small><h1>${esc(c.name)}</h1><p>편집할 항목을 선택하세요.</p></span><div class="character-file-actions mobile-character-file-actions"><button type="button" data-export-profile>프로필 내보내기</button><button type="button" data-tab="statistics">통계</button><button type="button" class="primary" data-save>캐릭터 저장</button><button type="button" class="danger" data-delete-character="${c.id}">캐릭터 삭제</button></div></div>
         <div class="mobile-character-pane-grid">${paneButtons}</div>
       </section>
-      <section class="desktop-character-editor"><div class="character-menu">${Object.entries(paneMeta).map(([key,[label]])=>`<button data-character-pane="${key}" class="${state.characterPane===key?"on":""}">${label}</button>`).join("")}<div class="character-file-actions"><button type="button" data-export-profile>프로필 내보내기</button><button type="button" class="primary" data-save>캐릭터 저장</button><button type="button" class="danger" data-delete-character="${c.id}">캐릭터 삭제</button></div></div>${pane}</section>
+      <section class="desktop-character-editor"><div class="character-menu">${Object.entries(paneMeta).map(([key,[label]])=>`<button data-character-pane="${key}" class="${state.characterPane===key?"on":""}">${label}</button>`).join("")}<div class="character-file-actions"><button type="button" data-export-profile>프로필 내보내기</button><button type="button" data-tab="statistics">통계</button><button type="button" class="primary" data-save>캐릭터 저장</button><button type="button" class="danger" data-delete-character="${c.id}">캐릭터 삭제</button></div></div>${pane}</section>
       <dialog class="mobile-character-editor-dialog" style="--character-own:${esc(c.theme?.primary||"#176b60")};--character-secondary:${esc(c.theme?.secondary||c.theme?.primary||"#176b60")}" data-mobile-character-editor-dialog="${state.characterPane}"><div class="mobile-character-editor-shell"><div class="mobile-editor-head"><span>${avatar(c)}<small>${paneMeta[state.characterPane]?.[0]||"프로필"}</small><b>${esc(c.name)}</b></span><button type="button" data-close-mobile-character-editor aria-label="편집을 저장하고 닫기">×</button></div><div class="mobile-character-editor-body">${pane}</div><div class="mobile-character-editor-actions"><button type="button" class="primary" data-save-mobile-character-editor>편집 완료·저장</button></div></div></dialog>
       <dialog class="mobile-character-reorder-dialog" data-mobile-character-reorder-dialog><form method="dialog"><div class="mobile-editor-head"><span><small>CHARACTER ORDER</small><b>캐릭터 위치 바꾸기</b></span><button value="close">×</button></div><p>화살표를 눌러 홈과 캐릭터 목록의 순서를 바꿔요.</p><div>${reorderRows}</div><button class="primary" value="close">완료</button></form></dialog>
     </section>
@@ -2180,12 +2191,17 @@ function visualThemeSettings(){
   const bright=[["cream","오후 네 시의 크렘","햇빛 든 찻잔처럼 포근한 아이보리와 캐러멜","#b06a00","#f2a93b"],["peach","복숭아빛 첫 편지","부드러운 복숭아와 설레는 첫 인사를 닮은 색","#ef536f","#ff986e"],["mint","유리 온실의 아침","이슬 맺힌 민트 잎과 아침 유리창의 맑은 빛","#00a982","#4bd8aa"],["sunshine","레몬 타르트의 오후","노란 햇살과 금빛 설탕이 반짝이는 명랑한 오후","#d98b00","#ffd23f"]];
   const classic=[["monochrome","새벽의 잉크병","고요한 새벽 종이 위에 번지는 또렷한 먹빛","#20242a","#6d747d"],["sage","비 갠 뒤의 정원","비가 멎은 뒤 잎사귀에 남은 차분하고 맑은 초록","#2f855a","#76c36a"],["ocean","유리 바다의 아침","햇빛이 투과하는 깊고 맑은 바다의 푸른빛","#007fc2","#36c0e8"],["lavender","라일락 꿈결","잠들기 전 창가에 번지는 부드러운 보랏빛","#7547e8","#c26de8"]];
   const heritage=[["baroque","베르사유의 황금 오후","샹들리에와 금박 장식 사이로 쏟아지는 오래된 오후의 빛","#ad6d15","#efbb55"],["moonlit-drawer","달빛 서랍 극장","남색 벨벳과 크림 종이, 금빛 프레임으로 만든 게임 UI 샘플","#172a58","#d4a84f"]];
-  const all=[...heritage,...vivid,...bright,...classic];
+  const story=[["ruined-rose","재가 된 장미의 방","빛바랜 흑연과 마른 장미, 금이 간 은빛 장식이 남은 피폐한 방","#681f2a","#9a877f"],["healing-glasshouse","숨을 고르는 유리 온실","이슬 맺힌 세이지 잎과 우윳빛 햇살이 천천히 마음을 감싸는 정원","#3e755e","#9bb88a"],["reverie-ward","꿈결 너머의 유리 병동","라일락 잔상과 청록빛 환영 사이로 현실의 가장자리가 흐려지는 몽환","#6551a5","#36a9a0"],["noir-rain","자정에 젖은 필름","비 내린 골목의 흑백 필름 위로 붉은 네온과 옅은 연기가 스치는 밤","#a21f2d","#3e454d"]];
+  const all=[...story,...heritage,...vivid,...bright,...classic];
   const buttons=themes=>themes.map(([value,label,description,a,b])=>`<button type="button" data-visual-theme="${esc(value)}" class="${state.visualTheme===value?"on":""}" style="--theme-a:${esc(a||"")};--theme-b:${esc(b||"")}"><i aria-hidden="true"></i><span><b>${esc(label)}</b><small>${esc(description)}</small></span>${state.visualTheme===value?`<em>현재 선택</em>`:""}</button>`).join("");
   const current=all.find(([value])=>value===state.visualTheme)||classic[0];
   return `<section class="setting-card visual-theme-card"><h2>전체 색상 테마</h2><p>이 색은 모든 캐릭터와 화면의 버튼·강조색에 함께 적용돼요. 버튼 글자는 배경 밝기에 맞춰 자동으로 바뀝니다.</p><div class="current-visual-theme" style="--theme-a:${esc(current[3])};--theme-b:${esc(current[4])}"><i aria-hidden="true"></i><span><small>현재 선택한 테마</small><b>${esc(current[1])}</b><em>${esc(current[2])}</em></span></div><button type="button" class="primary open-visual-theme-picker" data-open-visual-theme-dialog>테마 선택하기</button><dialog class="visual-theme-dialog" data-visual-theme-dialog><form method="dialog"><div class="visual-theme-dialog-head"><span><small>COLOR THEME</small><h2>테마 선택하기</h2><p>미리보기에서 원하는 색을 고르면 바로 적용돼요.</p></span><button value="close" aria-label="닫기">×</button></div><div class="visual-theme-dialog-body"><div class="visual-theme-options visual-theme-options-all">${buttons(all)}</div></div><div class="visual-theme-dialog-actions"><button value="close">닫기</button></div></form></dialog></section>`;
 }
 Object.assign(UI_TEXT.en,{
+  "재가 된 장미의 방":"The Room of Ashen Roses","빛바랜 흑연과 마른 장미, 금이 간 은빛 장식이 남은 피폐한 방":"A ruined room of faded graphite, dried roses, and cracked silver ornament",
+  "숨을 고르는 유리 온실":"The Glasshouse That Breathes","이슬 맺힌 세이지 잎과 우윳빛 햇살이 천천히 마음을 감싸는 정원":"A quiet garden where dewy sage and milky sunlight gently hold the heart",
+  "꿈결 너머의 유리 병동":"The Glass Ward Beyond Reverie","라일락 잔상과 청록빛 환영 사이로 현실의 가장자리가 흐려지는 몽환":"A dreamscape where reality softens between lilac afterimages and teal visions",
+  "자정에 젖은 필름":"Film Soaked at Midnight","비 내린 골목의 흑백 필름 위로 붉은 네온과 옅은 연기가 스치는 밤":"A monochrome night of wet alleys, red neon, and drifting smoke",
   "달빛 서랍 극장":"Moonlit Drawer Theatre","남색 벨벳과 크림 종이, 금빛 프레임으로 만든 게임 UI 샘플":"A game UI sample made of navy velvet, cream paper, and golden frames",
   "진주빛 로즈 부두아르":"Pearl-Rose Boudoir","블러시 실크와 오래된 진주 장식이 머무는 공주님의 작은 방":"A princess's private room of blush silk and antique pearls",
   "한밤의 베리 정원":"Midnight Berry Garden","보랏빛 밤에 장미와 잘 익은 베리가 반짝이는 색":"Roses and ripe berries shimmering in a violet night",
@@ -2205,6 +2221,10 @@ Object.assign(UI_TEXT.en,{
   "베르사유의 황금 오후":"A Golden Afternoon at Versailles","샹들리에와 금박 장식 사이로 쏟아지는 오래된 오후의 빛":"Old afternoon light pouring between chandeliers and gilded ornament"
 });
 Object.assign(UI_TEXT.ja,{
+  "재가 된 장미의 방":"灰になった薔薇の部屋","빛바랜 흑연과 마른 장미, 금이 간 은빛 장식이 남은 피폐한 방":"色あせた黒鉛、枯れた薔薇、ひび割れた銀飾りが残る荒廃した部屋",
+  "숨을 고르는 유리 온실":"息を整えるガラス温室","이슬 맺힌 세이지 잎과 우윳빛 햇살이 천천히 마음을 감싸는 정원":"露をまとったセージと乳白色の陽光が心をそっと包む庭",
+  "꿈결 너머의 유리 병동":"夢の向こうのガラス病棟","라일락 잔상과 청록빛 환영 사이로 현실의 가장자리가 흐려지는 몽환":"ライラックの残像と青緑の幻のあいだで現実の輪郭がほどける夢景色",
+  "자정에 젖은 필름":"真夜中に濡れたフィルム","비 내린 골목의 흑백 필름 위로 붉은 네온과 옅은 연기가 스치는 밤":"雨の路地を映す白黒フィルムに赤いネオンと淡い煙がよぎる夜",
   "달빛 서랍 극장":"月明かりの引き出し劇場","남색 벨벳과 크림 종이, 금빛 프레임으로 만든 게임 UI 샘플":"紺のベルベット、クリーム色の紙、金色のフレームで作ったゲームUIサンプル"
 });
 Object.assign(UI_TEXT.ja,{
@@ -2272,7 +2292,7 @@ Object.assign(UI_TEXT.en,{
   "크림 라떼":"Cream Latte","포근하고 환한 아이보리와 캐러멜빛":"Warm, bright ivory with caramel accents","복숭아 소다":"Peach Soda","생기 있고 부드러운 복숭앗빛":"A lively, soft peach palette","민트 정원":"Mint Garden","산뜻하고 맑은 민트와 잎사귀빛":"Fresh mint with clear leafy accents","햇살 레몬":"Sunlit Lemon","따뜻하고 명랑한 레몬과 금빛":"Warm, cheerful lemon and gold",
   "저장과 동기화":"Save & sync","동기화 이름 표시":"Sync display name","언어 · Language · 言語":"Language","영어와 일본어 번역 범위를 계속 넓히고 있어요.":"English and Japanese coverage is being expanded continuously.","영어·일본어 베타 · 생활 장면 번역도 계속 추가됩니다.":"English & Japanese beta · More life-scene translations are on the way.",
   "확장팩":"Expansion packs","확장팩 · 출시 준비 중":"Expansion pack · Coming soon","이력서를 제출해요":"Submit Your Résumé","기존 직업에 더 세밀한 위계와 직급, 직장 내 관계, 실제 근무 장소와 구체적인 근무 내용을 더합니다. 상사와 부하 직원, 동료 사이의 역할과 업무 흐름이 생활 장면과 주간 일정에 이어지는 대규모 직업 확장팩이에요.":"A major career expansion adding deeper hierarchy and ranks, workplace relationships, real work locations, and detailed duties to existing occupations. Roles and workflows between managers, coworkers, and direct reports carry into life scenes and weekly schedules.","직업별 위계·직급과 승진 흐름":"Career hierarchy, ranks, and promotions","상사·동료·부하 직원의 직장 내 관계":"Workplace relationships with managers, coworkers, and direct reports","근무 장소·부서·담당 업무와 전용 생활 장면":"Workplaces, departments, duties, and dedicated life scenes","이 이미지는 ":"Replace only "," 파일만 바꾸면 교체돼요.":" to change this image."
-  ,"원하는 상품과 수량을 장바구니에 담아 한 번에 결제할 수 있어요.":"Add the products and quantities you want to the cart and pay in one checkout.","캐릭터 슬롯":"Character slots","캐릭터 5명 추가":"Add 5 character slots","구매할 때마다 캐릭터 슬롯 5개가 계정에 영구 추가됩니다.":"Each purchase permanently adds five character slots to your account.","마을 슬롯":"Town slots","마을 1개 추가":"Add 1 town slot","구매할 때마다 새로운 마을 슬롯 1개가 계정에 영구 추가됩니다.":"Each purchase permanently adds one town slot to your account.","사진 저장 공간":"Image storage","사진 저장 공간 50MB 추가":"Add 50MB image storage","구매하면 계정의 사진 저장 공간이 50MB로 늘어납니다.":"This increases your account image storage to 50MB.","평생 소장":"Permanent","개발 응원":"Support development","개발자에게 녹차 사주기 🍵":"Buy the developer green tea 🍵","잘 먹겠습니다 🥹":"Thank you 🥹","같은 상품도 여러 개 담을 수 있어요.":"You can add multiple quantities of the same product.","아직 장바구니가 비어 있어요.":"Your cart is empty.","총 결제금액":"Total","장바구니 결제하기":"Checkout cart"
+  ,"원하는 상품과 수량을 장바구니에 담아 한 번에 결제할 수 있어요.":"Add the products and quantities you want to the cart and pay in one checkout.","캐릭터 슬롯":"Character slots","캐릭터 5명 추가":"Add 5 character slots","캐릭터 슬롯 5개가 결제 즉시 계정에 영구 적용되며, 서랍마을 서비스 운영 기간 동안 유지됩니다.":"Five character slots are permanently applied to the account immediately after payment and remain available while Drawer Village is in service.","마을 슬롯":"Town slots","마을 1개 추가":"Add 1 town slot","마을 슬롯 1개가 결제 즉시 계정에 영구 적용되며, 서랍마을 서비스 운영 기간 동안 유지됩니다.":"One town slot is permanently applied to the account immediately after payment and remains available while Drawer Village is in service.","사진 저장 공간":"Image storage","사진 저장 공간 50MB 추가":"Add 50MB image storage","구매하면 계정의 사진 저장 공간이 50MB로 늘어납니다.":"This increases your account image storage to 50MB.","일회성 구매":"One-time purchase","개발 응원":"Support development","개발자에게 녹차 사주기 🍵":"Buy the developer green tea 🍵","잘 먹겠습니다 🥹":"Thank you 🥹","같은 상품도 여러 개 담을 수 있어요.":"You can add multiple quantities of the same product.","한 번 결제 금액은 5만원 미만이어야 해요.":"A single checkout must stay under KRW 50,000.","한도에 닿는 상품은 더 담을 수 없어요.":"Products that would reach the limit cannot be added.","이 상품을 더 담으면 5만원 이상이에요":"Adding this product would make the total KRW 50,000 or more","수량을 줄여 주세요":"Reduce the quantity","아직 장바구니가 비어 있어요.":"Your cart is empty.","총 결제금액":"Total","장바구니 결제하기":"Checkout cart"
 });
 Object.assign(UI_TEXT.ja,{
   "고전과 장식 테마":"古典・装飾テーマ","바로크 살롱":"バロックサロン","검정 칠기 액자와 빛바랜 양피지, 와인빛과 청동 장식":"黒漆の額縁、古びた羊皮紙、ワインレッドと青銅の装飾",
@@ -2283,7 +2303,15 @@ Object.assign(UI_TEXT.ja,{
   "크림 라떼":"クリームラテ","포근하고 환한 아이보리와 캐러멜빛":"あたたかく明るいアイボリーとキャラメル","복숭아 소다":"ピーチソーダ","생기 있고 부드러운 복숭앗빛":"明るくやわらかな桃色","민트 정원":"ミントガーデン","산뜻なミントと葉の色":"爽やかなミントと葉の色","산뜻하고 맑은 민트와 잎사귀빛":"爽やかで澄んだミントと葉の色","햇살 레몬":"陽だまりレモン","따뜻하고 명랑한 레몬과 금빛":"あたたかく明るいレモンと金色",
   "저장과 동기화":"保存と同期","동기화 이름 표시":"同期時の表示名","언어 · Language · 言語":"言語","영어와 일본어 번역 범위를 계속 넓히고 있어요.":"英語・日本語の翻訳範囲を引き続き拡大しています。","영어·일본어 베타 · 생활 장면 번역도 계속 추가됩니다.":"英語・日本語ベータ・生活シーンの翻訳も順次追加します。",
   "확장팩":"拡張パック","확장팩 · 출시 준비 중":"拡張パック・リリース準備中","이력서를 제출해요":"履歴書を提出します","기존 직업에 더 세밀한 위계와 직급, 직장 내 관계, 실제 근무 장소와 구체적인 근무 내용을 더합니다. 상사와 부하 직원, 동료 사이의 역할과 업무 흐름이 생활 장면과 주간 일정에 이어지는 대규모 직업 확장팩이에요.":"既存の職業に、より細かな階層・役職、職場の人間関係、実際の勤務場所と具体的な業務内容を追加します。上司・同僚・部下の役割や仕事の流れが生活シーンと週間予定に反映される大型職業拡張パックです。","직업별 위계·직급과 승진 흐름":"職業ごとの階層・役職・昇進","상사·동료·부하 직원의 직장 내 관계":"上司・同僚・部下との職場関係","근무 장소·부서·담당 업무와 전용 생활 장면":"勤務場所・部署・担当業務と専用生活シーン","이 이미지는 ":"この画像は "," 파일만 바꾸면 교체돼요.":" ファイルだけを差し替えると変更できます。"
-  ,"원하는 상품과 수량을 장바구니에 담아 한 번에 결제할 수 있어요.":"ほしい商品と数量をカートに入れて、まとめて決済できます。","캐릭터 슬롯":"キャラクタースロット","캐릭터 5명 추가":"キャラクター枠を5人追加","구매할 때마다 캐릭터 슬롯 5개가 계정에 영구 추가됩니다.":"購入するたび、キャラクター枠が5人分アカウントに永久追加されます。","마을 슬롯":"村スロット","마을 1개 추가":"村スロットを1つ追加","구매할 때마다 새로운 마을 슬롯 1개가 계정에 영구 추가됩니다.":"購入するたび、新しい村スロットが1つアカウントに永久追加されます。","사진 저장 공간":"画像ストレージ","사진 저장 공간 50MB 추가":"画像ストレージを50MB追加","구매하면 계정의 사진 저장 공간이 50MB로 늘어납니다.":"購入するとアカウントの画像保存容量が50MBになります。","평생 소장":"永久所有","개발 응원":"開発を応援","개발자에게 녹차 사주기 🍵":"開発者に緑茶をおごる 🍵","잘 먹겠습니다 🥹":"ありがとうございます 🥹","같은 상품도 여러 개 담을 수 있어요.":"同じ商品を複数入れることもできます。","아직 장바구니가 비어 있어요.":"カートは空です。","총 결제금액":"合計金額","장바구니 결제하기":"カートを決済"
+  ,"원하는 상품과 수량을 장바구니에 담아 한 번에 결제할 수 있어요.":"ほしい商品と数量をカートに入れて、まとめて決済できます。","캐릭터 슬롯":"キャラクタースロット","캐릭터 5명 추가":"キャラクター枠を5人追加","캐릭터 슬롯 5개가 결제 즉시 계정에 영구 적용되며, 서랍마을 서비스 운영 기간 동안 유지됩니다.":"キャラクター枠5人分が決済直後にアカウントへ永続的に適用され、ひきだし村のサービス運営期間中は維持されます。","마을 슬롯":"村スロット","마을 1개 추가":"村スロットを1つ追加","마을 슬롯 1개가 결제 즉시 계정에 영구 적용되며, 서랍마을 서비스 운영 기간 동안 유지됩니다.":"村スロット1つが決済直後にアカウントへ永続的に適用され、ひきだし村のサービス運営期間中は維持されます。","사진 저장 공간":"画像ストレージ","사진 저장 공간 50MB 추가":"画像ストレージを50MB追加","구매하면 계정의 사진 저장 공간이 50MB로 늘어납니다.":"購入するとアカウントの画像保存容量が50MBになります。","일회성 구매":"買い切り","개발 응원":"開発を応援","개발자에게 녹차 사주기 🍵":"開発者に緑茶をおごる 🍵","잘 먹겠습니다 🥹":"ありがとうございます 🥹","같은 상품도 여러 개 담을 수 있어요.":"同じ商品を複数入れることもできます。","한 번 결제 금액은 5만원 미만이어야 해요.":"1回の決済金額は5万ウォン未満にしてください。","한도에 닿는 상품은 더 담을 수 없어요.":"上限に達する商品は追加できません。","이 상품을 더 담으면 5만원 이상이에요":"この商品を追加すると5万ウォン以上になります","수량을 줄여 주세요":"数量を減らしてください","아직 장바구니가 비어 있어요.":"カートは空です。","총 결제금액":"合計金額","장바구니 결제하기":"カートを決済"
+});
+Object.assign(UI_TEXT.en,{
+  "캐릭터 슬롯 5개가 결제 즉시 계정에 영구 적용됩니다. 결제일부터 최소 6개월간 이용을 보장하며, 이후에도 서비스 운영 기간 동안 유지됩니다.":"Five character slots are permanently applied to the account immediately after payment. Access is guaranteed for at least six months from the payment date and continues while the service remains in operation.",
+  "마을 슬롯 1개가 결제 즉시 계정에 영구 적용됩니다. 결제일부터 최소 6개월간 이용을 보장하며, 이후에도 서비스 운영 기간 동안 유지됩니다.":"One town slot is permanently applied to the account immediately after payment. Access is guaranteed for at least six months from the payment date and continues while the service remains in operation."
+});
+Object.assign(UI_TEXT.ja,{
+  "캐릭터 슬롯 5개가 결제 즉시 계정에 영구 적용됩니다. 결제일부터 최소 6개월간 이용을 보장하며, 이후에도 서비스 운영 기간 동안 유지됩니다.":"キャラクター枠5人分が決済直後にアカウントへ永続的に適用されます。決済日から最低6か月間の利用を保証し、その後もサービス運営期間中は維持されます。",
+  "마을 슬롯 1개가 결제 즉시 계정에 영구 적용됩니다. 결제일부터 최소 6개월간 이용을 보장하며, 이후에도 서비스 운영 기간 동안 유지됩니다.":"村スロット1つが決済直後にアカウントへ永続的に適用されます。決済日から最低6か月間の利用を保証し、その後もサービス運営期間中は維持されます。"
 });
 Object.assign(UI_TEXT.en,{
   "저장과 동기화":"Save & sync","이 캐릭터가 끌리는 특성 정하기":"Choose preferred traits","이 캐릭터가 비선호하는 특성 정하기":"Choose disliked traits","비선호하는 특징 정하기":"Choose disliked traits",
@@ -2375,9 +2403,12 @@ Object.assign(UI_TEXT.en,{
   "저장된 캐릭터":"Saved characters",
   "평균 기상 시각":"Average wake time","평균 취침 시각":"Average bedtime",
   "운전면허 보유 비율":"Licensed drivers","흡연자 비율":"Smokers",
+  "성별 분포":"Gender distribution","여성":"Female","남성":"Male","그 외":"Other","명":"characters",
+  "운전면허 보유":"Licensed drivers","흡연 캐릭터":"Characters who smoke","신체 설정 반영":"Body profile coverage","보조기기·접근성 설정":"Assistive devices & accessibility",
   "성별":"Gender","나이대":"Age group","직업":"Occupation","말투":"Speech style","성격 유형":"Personality types","생활 마을":"Home town",
   "소비 유형":"Spending style","재산":"Wealth","기상 습관":"Wake-up habit","수면 습관":"Sleep habit",
   "사람과 어울리는 방식":"Social style","일정을 다루는 방식":"Planning style","깔끔한 정도":"Tidiness","갈등 대응":"Conflict response","애정 표현":"Affection style",
+  "운전면허·운전 경험":"Licence & driving experience","흡연 여부":"Smoking","주량":"Alcohol tolerance","체형":"Body type","신체 특징":"Physical traits","머리색":"Hair color","머리 길이":"Hair length","머리 질감":"Hair texture","눈동자 색":"Eye color","화장 정도":"Makeup level","화장 스타일":"Makeup style","건강 상태":"Health conditions","휠체어 사용":"Wheelchair use","의수 사용":"Prosthetic arm","의족 사용":"Prosthetic leg","청각 상태":"Hearing","시각 상태":"Vision","접근성 선호":"Accessibility preferences",
   "마을 미지정":"No town assigned","아직 표시할 캐릭터가 없어요.":"There are no characters to summarize yet.",
   "보고서 다운로드":"Download report","캐릭터 통계 보고서를 저장했습니다":"Character statistics report saved",
   "홈 화면 도구":"Home screen tools","화면 편집":"Edit display","통계":"Statistics",
@@ -2392,9 +2423,12 @@ Object.assign(UI_TEXT.ja,{
   "저장된 캐릭터":"保存されたキャラクター",
   "평균 기상 시각":"平均起床時刻","평균 취침 시각":"平均就寝時刻",
   "운전면허 보유 비율":"免許保有率","흡연자 비율":"喫煙者率",
+  "성별 분포":"性別分布","여성":"女性","남성":"男性","그 외":"その他","명":"人",
+  "운전면허 보유":"運転免許保有","흡연 캐릭터":"喫煙キャラクター","신체 설정 반영":"身体設定の反映","보조기기·접근성 설정":"補助機器・アクセシビリティ設定",
   "성별":"性別","나이대":"年齢層","직업":"職業","말투":"話し方","성격 유형":"性格タイプ","생활 마을":"生活する村",
   "소비 유형":"消費タイプ","재산":"財産","기상 습관":"起床習慣","수면 습관":"睡眠習慣",
   "사람과 어울리는 방식":"人との関わり方","일정을 다루는 방식":"予定の立て方","깔끔한 정도":"整理整頓の度合い","갈등 대응":"対立への対応","애정 표현":"愛情表現",
+  "운전면허·운전 경험":"免許・運転経験","흡연 여부":"喫煙状況","주량":"酒量","체형":"体型","신체 특징":"身体的特徴","머리색":"髪色","머리 길이":"髪の長さ","머리 질감":"髪質","눈동자 색":"瞳の色","화장 정도":"メイクの濃さ","화장 스타일":"メイクスタイル","건강 상태":"健康状態","휠체어 사용":"車いすの使用","의수 사용":"義手の使用","의족 사용":"義足の使用","청각 상태":"聴覚","시각 상태":"視覚","접근성 선호":"アクセシビリティの希望",
   "마을 미지정":"村未設定","아직 표시할 캐릭터가 없어요.":"集計できるキャラクターはまだいません。",
   "보고서 다운로드":"レポートをダウンロード","캐릭터 통계 보고서를 저장했습니다":"キャラクター統計レポートを保存しました",
   "홈 화면 도구":"ホーム画面ツール","화면 편집":"画面編集","통계":"統計",
@@ -2403,7 +2437,16 @@ Object.assign(UI_TEXT.ja,{
   "완료":"完了","캐릭터 통계 보고서":"キャラクター統計レポート"
 });
 function businessInformationFooter(){
-  return `<footer class="settings-business-footer" aria-label="사업자 및 정책 정보"><b>까륵</b><p>사업자등록번호 : 540-17-02654 <i></i> 대표 : 김세은<br>호스팅서비스 : Cloudflare, Inc. <i></i> 통신판매업 신고번호 : 신고 진행 중 <a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=5401702654" target="_blank" rel="noopener">사업자정보확인</a><br>고객센터 : <a href="tel:01076630610">010-7663-0610</a> <i></i> 이메일 : <a href="mailto:kkyaareuk@gmail.com">kkyaareuk@gmail.com</a><br>사업장 주소 : 서울특별시 양천구 신정중앙로 68, 403-133호(신정동, 해풍빌딩)</p><nav aria-label="정책 문서"><a href="./privacy.html">개인정보처리방침</a><a href="./terms.html">서비스 이용약관</a><a href="https://pages.tosspayments.com/terms/user" target="_blank" rel="noopener">토스페이먼츠 이용약관</a></nav></footer>`;
+  const language=state.uiLanguage;
+  const copy=language==="en"?{
+    aria:"Business and policy information",registration:"Business registration no.",representative:"Representative",hosting:"Hosting provider",mailOrder:"Mail-order sales registration",pending:"Pending",verify:"Verify business information",support:"Customer support",email:"Email",address:"Business address",privacy:"Privacy Policy",terms:"Terms of Service",toss:"Toss Payments Terms"
+  }:language==="ja"?{
+    aria:"事業者・ポリシー情報",registration:"事業者登録番号",representative:"代表者",hosting:"ホスティング事業者",mailOrder:"通信販売業届出番号",pending:"届出手続き中",verify:"事業者情報を確認",support:"カスタマーサポート",email:"メール",address:"事業所住所",privacy:"プライバシーポリシー",terms:"利用規約",toss:"Toss Payments 利用規約"
+  }:{
+    aria:"사업자 및 정책 정보",registration:"사업자등록번호",representative:"대표",hosting:"호스팅서비스",mailOrder:"통신판매업 신고번호",pending:"신고 진행 중",verify:"사업자정보확인",support:"고객센터",email:"이메일",address:"사업장 주소",privacy:"개인정보처리방침",terms:"서비스 이용약관",toss:"토스페이먼츠 이용약관"
+  };
+  const tossTerms=window.PARALLEL_CITY_CONFIG?.nativeApp?"":`<a href="https://pages.tosspayments.com/terms/user" target="_blank" rel="noopener">${copy.toss}</a>`;
+  return `<footer class="settings-business-footer" aria-label="${copy.aria}"><b>까륵</b><p>${copy.registration} : 540-17-02654 <i></i> ${copy.representative} : 김세은<br>${copy.hosting} : Cloudflare, Inc. <i></i> ${copy.mailOrder} : ${copy.pending} <a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=5401702654" target="_blank" rel="noopener">${copy.verify}</a><br>${copy.support} : <a href="tel:01076630610">010-7663-0610</a> <i></i> ${copy.email} : <a href="mailto:kkyaareuk@gmail.com">kkyaareuk@gmail.com</a><br>${copy.address} : 서울특별시 양천구 신정중앙로 68, 403-133호(신정동, 해풍빌딩)</p><nav aria-label="${copy.aria}"><a href="./privacy.html">${copy.privacy}</a><a href="./terms.html">${copy.terms}</a>${tossTerms}</nav></footer>`;
 }
 function settings(){return settingsContent().replace(/<\/section>$/,`${businessInformationFooter()}</section>`)}
 function townPlaceEditor(p,items,audiences,selected){
@@ -2426,7 +2469,7 @@ function townMobile(){
 }
 function view(){
   if(!state.order.length)return `<section class="panel empty"><h1>첫 캐릭터를 만들어 주세요</h1><p>로그인 전에는 예시 캐릭터나 실제 지역이 표시되지 않아요.</p><button class="primary" data-new>+ 캐릭터 만들기</button></section>`;
-  return ({observe,home,character,catalog,relationship,routine,town:townMobile,shop,settings}[state.activeTab]||observe)();
+  return ({observe,home,character,catalog,relationship,routine,statistics,town:townMobile,shop,settings}[state.activeTab]||observe)();
 }
 export function renderApp(next){
   if((!next.activeId||!next.characters[next.activeId])&&next.order.length)next.activeId=next.order[0];
@@ -2456,11 +2499,11 @@ export function setAccountEntitlements(value){accountEntitlements={backgroundPac
 
 const CART_KEY="drawer-village-cart";
 const SHOP_PRODUCTS={
-  character_slots_5:{label:"캐릭터 슬롯",title:"캐릭터 5명 추가",description:"구매할 때마다 캐릭터 슬롯 5개가 계정에 영구 추가됩니다.",price:1200},
-  town_slot_1:{label:"마을 슬롯",title:"마을 1개 추가",description:"구매할 때마다 새로운 마을 슬롯 1개가 계정에 영구 추가됩니다.",price:1900},
+  character_slots_5:{label:"캐릭터 슬롯",title:"캐릭터 5명 추가",description:"캐릭터 슬롯 5개가 결제 즉시 계정에 영구 적용됩니다. 결제일부터 최소 6개월간 이용을 보장하며, 이후에도 서비스 운영 기간 동안 유지됩니다.",price:1200},
+  town_slot_1:{label:"마을 슬롯",title:"마을 1개 추가",description:"마을 슬롯 1개가 결제 즉시 계정에 영구 적용됩니다. 결제일부터 최소 6개월간 이용을 보장하며, 이후에도 서비스 운영 기간 동안 유지됩니다.",price:1900},
   green_tea:{label:"개발 응원",title:"개발자에게 녹차 사주기 🍵",description:"잘 먹겠습니다 🥹",price:1500}
 };
-const jobExpansionCard=()=>`<section class="shop-coming shop-expansion-showcase" data-product-id="job_expansion"><div class="expansion-art"><img src="./shop-assets/resume-expansion.png" alt="이력서를 제출해요 확장팩 이미지"><span>이 이미지는 <b>shop-assets/resume-expansion.png</b> 파일만 바꾸면 교체돼요.</span></div><div class="expansion-copy"><span>확장팩 · 출시 준비 중</span><small>직업 확장팩</small><h2>이력서를 제출해요</h2><p>기존 직업에 더 세밀한 위계와 직급, 직장 내 관계, 실제 근무 장소와 구체적인 근무 내용을 더합니다. 상사와 부하 직원, 동료 사이의 역할과 업무 흐름이 생활 장면과 주간 일정에 이어지는 대규모 직업 확장팩이에요.</p><ul><li>직업별 위계·직급과 승진 흐름</li><li>상사·동료·부하 직원의 직장 내 관계</li><li>근무 장소·부서·담당 업무와 전용 생활 장면</li></ul><div><b>가격 미정</b><button type="button" disabled>출시 준비 중</button></div></div></section>`;
+const jobExpansionCard=()=>`<section class="shop-coming shop-expansion-showcase" data-product-id="job_expansion"><div class="expansion-art"><img src="./shop-assets/resume-expansion.png" alt="이력서를 제출해요 확장팩 이미지"></div><div class="expansion-copy"><span>확장팩 · 출시 준비 중</span><small>직업 확장팩</small><h2>이력서를 제출해요</h2><p>기존 직업에 더 세밀한 위계와 직급, 직장 내 관계, 실제 근무 장소와 구체적인 근무 내용을 더합니다. 상사와 부하 직원, 동료 사이의 역할과 업무 흐름이 생활 장면과 주간 일정에 이어지는 대규모 직업 확장팩이에요.</p><ul><li>직업별 위계·직급과 승진 흐름</li><li>상사·동료·부하 직원의 직장 내 관계</li><li>근무 장소·부서·담당 업무와 전용 생활 장면</li></ul><div><b>가격 미정</b><button type="button" disabled>출시 준비 중</button></div></div></section>`;
 const readCart=()=>{try{const value=JSON.parse(localStorage.getItem(CART_KEY)||"{}");return value&&typeof value==="object"?value:{}}catch{return {}}};
 function nativePlayShop(){
   const products=Object.entries(SHOP_PRODUCTS).map(([id,item])=>{
@@ -2472,10 +2515,14 @@ function nativePlayShop(){
 function shop(){
   if(window.PARALLEL_CITY_CONFIG?.nativeApp)return nativePlayShop();
   const cart=readCart();
-  const product=(id,item,ownedCount=0)=>`<article class="premium-product one-time-product" data-product-id="${id}"><div class="premium-product-heading"><span>${id==="green_tea"?"응원":"평생 소장"}</span><div><small>${item.label}</small><h2>${item.title}</h2></div><b>${item.price==null?"책정 중":`${item.price.toLocaleString("ko-KR")}원`}</b></div><p>${item.description}</p>${ownedCount?`<div class="premium-current"><b>${id==="storage_50mb"?"50MB 적용 중":`${ownedCount}회 구매 · 현재 적용 중`}</b><small>${id==="storage_50mb"?"이미 적용된 계정에서는 다시 구매하지 않아요.":"구매 수량만큼 계정에 계속 더해집니다."}</small></div>`:""}${previewMode()?`<button class="premium-buy" disabled>사전 체험 중 구매 불가</button>`:id==="storage_50mb"&&ownedCount?`<button class="premium-buy" disabled>이미 적용 중</button>`:item.disabled?`<button class="premium-buy" disabled>용량·가격 확정 후 구매 가능</button>`:`<button class="primary premium-buy" data-cart-add="${id}">장바구니에 담기</button>`}</article>`;
   const lines=Object.entries(cart).filter(([id,qty])=>SHOP_PRODUCTS[id]&&!SHOP_PRODUCTS[id].disabled&&Number(qty)>0);
   const total=lines.reduce((sum,[id,qty])=>sum+SHOP_PRODUCTS[id].price*Number(qty),0);
-  const cartHtml=lines.length?lines.map(([id,qty])=>{const item=SHOP_PRODUCTS[id],totalTitle=id==="character_slots_5"?`캐릭터 ${qty*5}명 추가`:id==="town_slot_1"?`마을 ${qty}개 추가`:id==="green_tea"?`녹차 ${qty}잔 사주기`:item.title;return `<article class="cart-line"><div><b>${totalTitle}</b><small>${item.title} · ${item.price.toLocaleString("ko-KR")}원 × ${qty}</small></div><div class="cart-quantity"><button data-cart-minus="${id}" aria-label="${item.title} 수량 줄이기">−</button><b>${qty}</b><button data-cart-plus="${id}" aria-label="${item.title} 수량 늘리기" ${id==="storage_50mb"?"disabled":""}>+</button></div><b>${(item.price*qty).toLocaleString("ko-KR")}원</b><button class="cart-remove" data-cart-remove="${id}">빼기</button></article>`}).join(""):`<p class="cart-empty">아직 장바구니가 비어 있어요.</p>`;
+  const cartLimit=50000;
+  const isOverLimit=total>=cartLimit;
+  const canAddToCart=id=>total+(Number(SHOP_PRODUCTS[id]?.price)||0)<cartLimit;
+  const product=(id,item,ownedCount=0)=>`<article class="premium-product one-time-product" data-product-id="${id}"><div class="premium-product-heading"><span>${id==="green_tea"?"응원":"일회성 구매"}</span><div><small>${item.label}</small><h2>${item.title}</h2></div><b>${item.price==null?"책정 중":`${item.price.toLocaleString("ko-KR")}원`}</b></div><p>${item.description}</p>${ownedCount?`<div class="premium-current"><b>${id==="storage_50mb"?"50MB 적용 중":`${ownedCount}회 구매 · 현재 적용 중`}</b><small>${id==="storage_50mb"?"이미 적용된 계정에서는 다시 구매하지 않아요.":"구매 수량만큼 계정에 계속 더해집니다."}</small></div>`:""}${previewMode()?`<button class="premium-buy" disabled>사전 체험 중 구매 불가</button>`:id==="storage_50mb"&&ownedCount?`<button class="premium-buy" disabled>이미 적용 중</button>`:item.disabled?`<button class="premium-buy" disabled>용량·가격 확정 후 구매 가능</button>`:canAddToCart(id)?`<button class="primary premium-buy" data-cart-add="${id}">장바구니에 담기</button>`:`<button class="premium-buy" disabled>이 상품을 더 담으면 5만원 이상이에요</button>`}</article>`;
+  const cartHtml=lines.length?lines.map(([id,qty])=>{const item=SHOP_PRODUCTS[id],totalTitle=id==="character_slots_5"?`캐릭터 ${qty*5}명 추가`:id==="town_slot_1"?`마을 ${qty}개 추가`:id==="green_tea"?`녹차 ${qty}잔 사주기`:item.title;return `<article class="cart-line"><div><b>${totalTitle}</b><small>${item.title} · ${item.price.toLocaleString("ko-KR")}원 × ${qty}</small></div><div class="cart-quantity"><button data-cart-minus="${id}" aria-label="${item.title} 수량 줄이기">−</button><b>${qty}</b><button data-cart-plus="${id}" aria-label="${item.title} 수량 늘리기" ${id==="storage_50mb"||!canAddToCart(id)?"disabled":""}>+</button></div><b>${(item.price*qty).toLocaleString("ko-KR")}원</b><button class="cart-remove" data-cart-remove="${id}">빼기</button></article>`}).join(""):`<p class="cart-empty">아직 장바구니가 비어 있어요.</p>`;
   const count=lines.reduce((sum,[,qty])=>sum+Number(qty),0);
-  return `<section class="panel form dlc-store shop-store"><div class="title"><div><h1>상점</h1><p>원하는 상품과 수량을 장바구니에 담아 한 번에 결제할 수 있어요.</p></div></div>${previewMode()?`<section class="preview-notice"><b>${esc(previewConfig().label||"사전 체험")} 기간이에요</b><p>${esc(previewConfig().message||"현재 기능을 점검하고 있어 실제 결제는 진행되지 않아요.")}</p></section>`:""}<div class="shop-product-grid">${product("character_slots_5",SHOP_PRODUCTS.character_slots_5,Number(accountEntitlements.characterSlotPacks)||0)}${product("town_slot_1",SHOP_PRODUCTS.town_slot_1,Number(accountEntitlements.townSlotPacks)||0)}${product("green_tea",SHOP_PRODUCTS.green_tea,0)}</div><div class="shop-expansion-heading"><small>COMING NEXT</small><h2>확장팩</h2></div>${jobExpansionCard()}<section class="shop-cart"><div class="title"><div><h2>장바구니</h2><p>${previewMode()?"사전 체험이 끝난 뒤 이용할 수 있어요.":"같은 상품도 여러 개 담을 수 있어요."}</p></div><b>${count}개</b></div><div class="cart-lines">${cartHtml}</div><div class="cart-total"><span>총 결제금액</span><b>${total.toLocaleString("ko-KR")}원</b></div>${previewMode()?`<span class="premium-buy disabled" aria-disabled="true">사전 체험 중에는 결제하지 않아요</span>`:`<a class="primary premium-buy ${lines.length?"":"disabled"}" ${lines.length?'href="./payment.html?cart=1" aria-disabled="false"':'aria-disabled="true"'}>장바구니 결제하기</a>`}</section><div class="dlc-hidden" hidden>${dlc()}</div></section>`;
+  const limitDetail=state.uiLanguage==="en"?(isOverLimit?"Reduce the quantity until the total is below KRW 50,000.":`Current total: KRW ${total.toLocaleString("en-US")} · Products that would reach the limit cannot be added.`):state.uiLanguage==="ja"?(isOverLimit?"合計が5万ウォン未満になるまで数量を減らしてください。":`現在 ${total.toLocaleString("ko-KR")}ウォン・上限に達する商品は追加できません。`):(isOverLimit?"수량을 줄여 결제금액을 50,000원 미만으로 맞춰 주세요.":`현재 ${total.toLocaleString("ko-KR")}원 · 한도에 닿는 상품은 더 담을 수 없어요.`);
+  return `<section class="panel form dlc-store shop-store"><div class="title"><div><h1>상점</h1><p>원하는 상품과 수량을 장바구니에 담아 한 번에 결제할 수 있어요.</p></div></div>${previewMode()?`<section class="preview-notice"><b>${esc(previewConfig().label||"사전 체험")} 기간이에요</b><p>${esc(previewConfig().message||"현재 기능을 점검하고 있어 실제 결제는 진행되지 않아요.")}</p></section>`:""}<div class="shop-product-grid">${product("character_slots_5",SHOP_PRODUCTS.character_slots_5,Number(accountEntitlements.characterSlotPacks)||0)}${product("town_slot_1",SHOP_PRODUCTS.town_slot_1,Number(accountEntitlements.townSlotPacks)||0)}${product("green_tea",SHOP_PRODUCTS.green_tea,0)}</div><div class="shop-expansion-heading"><small>COMING NEXT</small><h2>확장팩</h2></div>${jobExpansionCard()}<section class="shop-cart"><div class="title"><div><h2>장바구니</h2><p>${previewMode()?"사전 체험이 끝난 뒤 이용할 수 있어요.":"같은 상품도 여러 개 담을 수 있어요."}</p></div><b>${count}개</b></div><div class="premium-current"><b>한 번 결제 금액은 5만원 미만이어야 해요.</b><small>${limitDetail}</small></div><div class="cart-lines">${cartHtml}</div><div class="cart-total"><span>총 결제금액</span><b>${total.toLocaleString("ko-KR")}원</b></div>${previewMode()?`<span class="premium-buy disabled" aria-disabled="true">사전 체험 중에는 결제하지 않아요</span>`:`<a class="primary premium-buy ${lines.length&&!isOverLimit?"":"disabled"}" ${lines.length&&!isOverLimit?'href="./payment.html?cart=1" aria-disabled="false"':'aria-disabled="true"'}>${isOverLimit?"수량을 줄여 주세요":"장바구니 결제하기"}</a>`}</section><div class="dlc-hidden" hidden>${dlc()}</div></section>`;
 }
